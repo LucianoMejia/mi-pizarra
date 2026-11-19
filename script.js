@@ -46,6 +46,9 @@ const ICONS = {
   install: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01"/>'
 };
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) { r = Math.max(0, Math.min(Math.abs(r) || 0, Math.abs(w) / 2, Math.abs(h) / 2)); this.moveTo(x + r, y); this.arcTo(x + w, y, x + w, y + h, r); this.arcTo(x + w, y + h, x, y + h, r); this.arcTo(x, y + h, x, y, r); this.arcTo(x, y, x + w, y, r); this.closePath(); };
+}
 const ico = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
 
 /* ---------- Constantes ---------- */
@@ -329,11 +332,15 @@ function specialPoints(it, g, m) {
     out.push({ X, Y, c: color, kind });
   };
   const roots = (f, color, kind) => {
+    // Si la función vale ~0 en muchos tramos (curvas iguales o encimadas) no hay raíces aisladas que marcar.
+    const eps = Yspan * 1e-6; let zeros = 0;
+    for (let i = 0; i <= N; i += 5) if (Math.abs(safe(f, X0 + i * dx)) <= eps) zeros++;
+    if (zeros > 3) return;
     let pxv = X0, py = safe(f, X0);
     for (let i = 1; i <= N; i++) {
       const xv = X0 + i * dx, yv = safe(f, xv);
       if (isFinite(py) && isFinite(yv)) {
-        if (yv === 0) add(xv, 0, color, kind);
+        if (Math.abs(yv) <= eps) { if (Math.abs(py) > eps) add(xv, 0, color, kind); }
         else if (py * yv < 0 && Math.abs(py - yv) < Yspan * 2) {
           let a = pxv, b = xv, fa = py;
           for (let k = 0; k < 50; k++) { const mid = (a + b) / 2, fm = safe(f, mid); if (fa * fm <= 0) b = mid; else { a = mid; fa = fm; } }
@@ -362,7 +369,7 @@ function specialPoints(it, g, m) {
     roots((x) => f1(x) - f2(x), it.c, 'cross');
     for (let k = before; k < out.length; k++) out[k].Y = safe(f1, out[k].X);
   }
-  const pts = out.slice(0, 60);
+  const pts = out.slice(0, 40);
   spCache.set(it, { key, pts });
   return pts;
 }
@@ -380,6 +387,18 @@ function plotCurve(ctx, g, f) {
   ctx.stroke();
 }
 let paintBoard = null;
+// Escala de la vista en píxeles CSS por unidad del mundo (para que guiones y detalles midan lo mismo en pantalla).
+function pxScale(ctx) { const t = ctx.getTransform(); return Math.max(1e-3, Math.hypot(t.a, t.b) / (ctx.canvas === inkC ? DPR : 1)); }
+const AUTO_DARK = '#1d1d1f', LIGHT_INKS = ['#f6f6ef', '#f5f5f5', '#ffffff'];
+const BRIGHT = { '#1971c2': '#4dabf7', '#e03131': '#ff6b6b', '#2f9e44': '#51cf66', '#9c36b5': '#cc5de8', '#0c8599': '#3bc9db' };
+const isDarkBoard = (b) => b === BOARDS.chalk || b === BOARDS.dark;
+// El negro "automático" se vuelve tiza en pizarras oscuras y la tinta clara se vuelve negra en pizarras claras.
+function adapt(c, board) {
+  const b = board || paintBoard; if (!b || !c) return c;
+  const lc = String(c).toLowerCase();
+  if (isDarkBoard(b)) return lc === AUTO_DARK ? b.ink : (BRIGHT[lc] || c);
+  return LIGHT_INKS.includes(lc) ? AUTO_DARK : c;
+}
 function pill(ctx, text, x, y, color, fs, align) {
   ctx.font = `500 ${fs}px "Segoe UI",system-ui,sans-serif`;
   const w = ctx.measureText(text).width + fs * 0.9, h = fs * 1.55;
@@ -393,14 +412,14 @@ function pill(ctx, text, x, y, color, fs, align) {
 function drawPlane(ctx, it) {
   const g = planeGeom(it); const { x, y, w, h, u, ox, oy, kx, ky } = g;
   if (w < 8 || h < 8) return;
-  const m = getModel(it), ex = exOf(it);
+  const m = getModel(it), ex = exOf(it), ac = adapt(it.c);
   const lw = Math.max(1.5, it.w * 0.8);
   const fs = Math.max(11, Math.min(17, u * 0.32));
   ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   // Cuadrícula y regiones (recortadas al recuadro)
   ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
   if (it.grid !== false) {
-    ctx.strokeStyle = it.c; ctx.lineWidth = 1;
+    ctx.strokeStyle = ac; ctx.lineWidth = 1;
     for (const major of [false, true]) {
       ctx.globalAlpha = major ? 0.22 : 0.1; ctx.beginPath();
       for (let n = Math.ceil((x - ox) / u); ox + n * u <= x + w; n++) if ((n % 5 === 0) === major) { const gx = ox + n * u; ctx.moveTo(gx, y); ctx.lineTo(gx, y + h); }
@@ -411,19 +430,22 @@ function drawPlane(ctx, it) {
   }
   m.rows.forEach((r, i) => {
     if (r.kind !== 'ineq' || ex[i].hide) return;
-    const st = 2; ctx.fillStyle = ex[i].c; ctx.globalAlpha = 0.16; ctx.beginPath();
-    const up = r.op[0] === '>';
-    for (let px = x; px < x + w; px += st) {
-      const py = toPY(g, safe(r.f, fromPX(g, px + st / 2)));
-      if (isNaN(py)) continue;
-      const c = clamp(py, y, y + h);
-      if (up) ctx.rect(px, y, st, c - y); else ctx.rect(px, c, st, y + h - c);
+    const st = Math.max(0.5, w / 1600), up = r.op[0] === '>', edge = up ? y : y + h;
+    ctx.fillStyle = adapt(ex[i].c); ctx.globalAlpha = 0.16; ctx.beginPath();
+    let open = false, lastX = x;
+    const close = () => { if (open) { ctx.lineTo(lastX, edge); ctx.closePath(); open = false; } };
+    for (let px = x; px <= x + w + 0.01; px += st) {
+      const py = toPY(g, safe(r.f, fromPX(g, px)));
+      if (!isFinite(py)) { close(); continue; }
+      const c = clamp(py, y - 2, y + h + 2);
+      if (!open) { ctx.moveTo(px, edge); open = true; }
+      ctx.lineTo(px, c); lastX = px;
     }
-    ctx.fill(); ctx.globalAlpha = 1;
+    close(); ctx.fill(); ctx.globalAlpha = 1;
   });
   ctx.restore();
   // Ejes
-  ctx.strokeStyle = ctx.fillStyle = it.c; ctx.lineWidth = lw;
+  ctx.strokeStyle = ctx.fillStyle = ac; ctx.lineWidth = lw;
   const axY = oy >= y && oy <= y + h, axX = ox >= x && ox <= x + w;
   if (axY) { ctx.beginPath(); ctx.moveTo(x, oy); ctx.lineTo(x + w, oy); ctx.stroke(); arrowHead(ctx, x, oy, x + w, oy, lw); }
   if (axX) { ctx.beginPath(); ctx.moveTo(ox, y + h); ctx.lineTo(ox, y); ctx.stroke(); arrowHead(ctx, ox, y + h, ox, y, lw); }
@@ -450,9 +472,9 @@ function drawPlane(ctx, it) {
   ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
   m.rows.forEach((r, i) => {
     const s = ex[i]; if (s.hide) return;
-    ctx.strokeStyle = s.c; ctx.lineWidth = Math.max(2, it.w);
+    ctx.strokeStyle = adapt(s.c); ctx.lineWidth = Math.max(2, it.w);
     if (r.kind === 'fn') plotCurve(ctx, g, r.f);
-    else if (r.kind === 'ineq') { ctx.setLineDash(r.op.length === 1 ? [8, 6] : []); plotCurve(ctx, g, r.f); ctx.setLineDash([]); }
+    else if (r.kind === 'ineq') { const k = pxScale(ctx); ctx.setLineDash(r.op.length === 1 ? [9 / k, 7 / k] : []); plotCurve(ctx, g, r.f); ctx.setLineDash([]); }
     else if (r.kind === 'vline') { const px = toPX(g, safe(r.f, 0)); if (isFinite(px)) { ctx.beginPath(); ctx.moveTo(px, y); ctx.lineTo(px, y + h); ctx.stroke(); } }
   });
   ctx.restore();
@@ -461,9 +483,9 @@ function drawPlane(ctx, it) {
     for (const q of specialPoints(it, g, m)) {
       const px = toPX(g, q.X), py = toPY(g, q.Y);
       if (px < x || px > x + w || py < y || py > y + h) continue;
-      ctx.fillStyle = paintBoard ? paintBoard.bg : '#fff'; ctx.strokeStyle = q.c; ctx.lineWidth = 2;
+      ctx.fillStyle = paintBoard ? paintBoard.bg : '#fff'; ctx.strokeStyle = adapt(q.c); ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(px, py, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      if (it.coords !== false) pill(ctx, `(${fmt2(q.X)}, ${fmt2(q.Y)})`, px, py - 15, q.c, fs - 2);
+      if (it.coords !== false) pill(ctx, `(${fmt2(q.X)}, ${fmt2(q.Y)})`, px, py - 15, adapt(q.c), fs - 2);
     }
   }
   // Puntos definidos
@@ -471,10 +493,10 @@ function drawPlane(ctx, it) {
     if (r.kind !== 'point' || ex[i].hide) return;
     const X = safe(r.fx, 0), Y = safe(r.fy, 0), px = toPX(g, X), py = toPY(g, Y);
     if (!isFinite(px) || !isFinite(py) || px < x || px > x + w || py < y || py > y + h) return;
-    ctx.fillStyle = ex[i].c; ctx.strokeStyle = paintBoard ? paintBoard.bg : '#fff'; ctx.lineWidth = 2;
+    ctx.fillStyle = adapt(ex[i].c); ctx.strokeStyle = paintBoard ? paintBoard.bg : '#fff'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     const label = (r.name ? r.name + ' ' : '') + (it.coords !== false ? `(${fmt2(X)}, ${fmt2(Y)})` : '');
-    if (label.trim()) pill(ctx, label, px + 10, py - 16, ex[i].c, fs - 1, 'left');
+    if (label.trim()) pill(ctx, label, px + 10, py - 16, adapt(ex[i].c), fs - 1, 'left');
   });
   // Leyenda
   const leg = m.rows.map((r, i) => ({ r, s: ex[i] })).filter((o) => !o.s.hide && (o.r.kind === 'fn' || o.r.kind === 'ineq'));
@@ -485,7 +507,7 @@ function drawPlane(ctx, it) {
     ctx.fillStyle = paintBoard ? paintBoard.bg : '#fff'; ctx.globalAlpha = 0.85;
     ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x + 6, y + 6, lwid, lh * lines.length + 8, 8) : ctx.rect(x + 6, y + 6, lwid, lh * lines.length + 8); ctx.fill();
     ctx.globalAlpha = 1; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    lines.forEach((t, k) => { ctx.fillStyle = leg[k].s.c; ctx.fillText(t, x + 14, y + 10 + k * lh + fs * 0.12); });
+    lines.forEach((t, k) => { ctx.fillStyle = adapt(leg[k].s.c); ctx.fillText(t, x + 14, y + 10 + k * lh + fs * 0.12); });
   }
   ctx.restore();
 }
@@ -500,7 +522,7 @@ function traceAt(sx, sy) {
     m.rows.forEach((r, k) => {
       if ((r.kind !== 'fn' && r.kind !== 'ineq') || ex[k].hide) return;
       const Y = safe(r.f, X), py = toPY(g, Y); if (!isFinite(py) || py < g.y || py > g.y + g.h) return;
-      const d = Math.abs(py - wy) * v.s; if (d < 30 && (!best || d < best.d)) best = { d, X, Y, wx, wy: py, c: ex[k].c, name: r.name };
+      const d = Math.abs(py - wy) * v.s; if (d < 30 && (!best || d < best.d)) best = { d, X, Y, wx, wy: py, c: inkColor(ex[k].c), name: r.name };
     });
     return best;
   }
@@ -633,12 +655,12 @@ const pw = (p) => 0.3 + p * 1.25;
 function drawStroke(ctx, it) {
   const pts = it.pts; if (!pts || !pts.length) return;
   if (it.k && !it.er && !it.hl) {
-    ctx.save(); ctx.fillStyle = it.c; if (it.k === 'pencil') ctx.globalAlpha = 0.8;
+    ctx.save(); ctx.fillStyle = adapt(it.c); if (it.k === 'pencil') ctx.globalAlpha = 0.8;
     ctx.fill(inkPath(it)); ctx.restore(); return;
   }
   ctx.save();
   if (it.er) { ctx.globalCompositeOperation = 'destination-out'; ctx.strokeStyle = ctx.fillStyle = '#000'; }
-  else { ctx.strokeStyle = ctx.fillStyle = it.c; if (it.hl) ctx.globalAlpha = 0.38; }
+  else { ctx.strokeStyle = ctx.fillStyle = adapt(it.c); if (it.hl) ctx.globalAlpha = 0.38; }
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   const n = pts.length;
   if (n === 1) {
@@ -689,7 +711,7 @@ function drawImageItem(ctx, it) {
 function drawImages(ctx, p) { for (const it of p.items) if (it.t === 'image') drawImageItem(ctx, it); }
 const FONT = (size) => `${size}px "Segoe UI","Cambria Math",system-ui,sans-serif`;
 function drawText(ctx, it) {
-  ctx.save(); ctx.fillStyle = it.c; ctx.font = FONT(it.size); ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+  ctx.save(); ctx.fillStyle = adapt(it.c); ctx.font = FONT(it.size); ctx.textBaseline = 'top'; ctx.textAlign = 'left';
   const lines = it.s.split('\n');
   lines.forEach((l, i) => ctx.fillText(l, it.x, it.y + it.size * 0.125 + i * it.size * 1.25));
   ctx.restore();
@@ -702,7 +724,7 @@ function drawItem(ctx, it) {
     case 'text': return drawText(ctx, it);
     case 'plane': return drawPlane(ctx, it);
   }
-  ctx.save(); ctx.strokeStyle = it.c; ctx.lineWidth = it.w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.save(); ctx.strokeStyle = adapt(it.c); ctx.lineWidth = it.w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   const { x1, y1, x2, y2 } = it;
   ctx.beginPath();
   if (it.t === 'line' || it.t === 'arrow') { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); if (it.t === 'arrow') arrowHead(ctx, x1, y1, x2, y2, it.w); }
@@ -780,30 +802,44 @@ function moveItem(it, dx, dy) {
 
 /* ---------- Render ---------- */
 function req() { if (!raf) raf = requestAnimationFrame(render); }
+// Deja el contexto limpio: sin recortes, transformaciones ni estados guardados que hayan quedado de un dibujo interrumpido.
+function resetCtx(ctx) {
+  if (ctx.reset) ctx.reset();
+  else { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over'; ctx.setLineDash([]); ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); }
+}
+let drawErrShown = false;
+function drawSafe(ctx, it) {
+  ctx.save();
+  try { drawItem(ctx, it); }
+  catch (err) { if (!drawErrShown) { drawErrShown = true; console.error('No se pudo dibujar un elemento', it && it.t, err); } }
+  finally { ctx.restore(); }
+}
 function render() {
   raf = 0;
   const p = P(), v = view();
   paintBoard = BOARDS[p.board] || BOARDS.white;
+  resetCtx(bgX); resetCtx(inkX);
   drawBg(bgX, p, v, W, H, DPR);
-  bgX.setTransform(DPR * v.s, 0, 0, DPR * v.s, DPR * v.x, DPR * v.y); drawImages(bgX, p);
-  inkX.setTransform(1, 0, 0, 1, 0, 0); inkX.clearRect(0, 0, inkC.width, inkC.height);
+  bgX.setTransform(DPR * v.s, 0, 0, DPR * v.s, DPR * v.x, DPR * v.y);
+  for (const it of p.items) if (it.t === 'image') { bgX.save(); try { drawImageItem(bgX, it); } catch (_) {} bgX.restore(); }
+  inkX.setTransform(1, 0, 0, 1, 0, 0);
   if (useCache && cacheValid) inkX.drawImage(cacheC, 0, 0);
   else {
     inkX.setTransform(DPR * v.s, 0, 0, DPR * v.s, DPR * v.x, DPR * v.y);
-    for (const it of p.items) drawItem(inkX, it);
+    for (const it of p.items) drawSafe(inkX, it);
     if (useCache) {
       cacheX.setTransform(1, 0, 0, 1, 0, 0); cacheX.clearRect(0, 0, cacheC.width, cacheC.height);
       cacheX.drawImage(inkC, 0, 0); cacheValid = true;
     }
   }
   inkX.setTransform(DPR * v.s, 0, 0, DPR * v.s, DPR * v.x, DPR * v.y);
-  if (live) drawItem(inkX, live);
-  drawOverlay();
+  if (live) drawSafe(inkX, live);
+  try { drawOverlay(); } catch (err) { console.error(err); }
   if (edState) layoutEditor();
   if (laser.length || laserOn) req();
 }
 function drawOverlay() {
-  ovX.setTransform(1, 0, 0, 1, 0, 0); ovX.clearRect(0, 0, ovC.width, ovC.height);
+  resetCtx(ovX);
   ovX.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (S.sel.length) {
     const b = unionBox(S.sel);
@@ -883,6 +919,7 @@ function undo() { commitEditor(); closeGraphPanel(); const p = P(); if (!p.undo.
 function redo() { commitEditor(); closeGraphPanel(); const p = P(); if (!p.redo.length) return; p.undo.push(JSON.stringify(p.items)); p.items = JSON.parse(p.redo.pop()); S.sel = []; changed(); }
 let saveTimer = 0, dirty = false;
 function changed() {
+  if (gp.it && gp.page && !gp.page.items.includes(gp.it)) { gp.it = null; gp.before = null; gp.page = null; gp.playing.clear(); $('#graphPanel').classList.remove('show'); }
   cacheValid = false; dirty = true; req(); updateHistoryUI(); setTitle();
   clearTimeout(saveTimer); saveTimer = setTimeout(autosave, 700);
 }
@@ -946,13 +983,13 @@ ovC.addEventListener('pointerdown', (e) => {
   const tool = penEraser ? 'eraser' : S.tool;
   const v = view(); const [wx, wy] = toWorld(e.clientX, e.clientY);
   const id = e.pointerId;
-  if (gp.it && P().items.includes(gp.it) && inPlane(gp.it, wx, wy)) {
+  if (gp.it && (tool === 'func' || tool === 'plane') && P().items.includes(gp.it) && inPlane(gp.it, wx, wy)) {
     act = { type: 'gpan', id, sx: e.clientX, sy: e.clientY, ox0: gp.it.ox || 0, oy0: gp.it.oy || 0 }; ovC.style.cursor = 'grabbing'; return;
   }
   switch (tool) {
     case 'pen': {
       const pre = curPreset(), hl = pre.k === 'hl';
-      live = { t: 'stroke', c: inkColor(pre.c), w: r2(pre.w / v.s), pts: [[r2(wx), r2(wy), pr(e)]] };
+      live = { t: 'stroke', c: pre.c, w: r2(pre.w / v.s), pts: [[r2(wx), r2(wy), pr(e)]] };
       if (hl) live.hl = 1; else live.k = pre.k;
       if (e.pointerType === 'pen') live.pr = 1;
       act = { type: 'draw', id, assist: true, sm: [wx, wy], raw: [wx, wy], hx: e.clientX, hy: e.clientY, last: e };
@@ -1099,7 +1136,7 @@ let gpWheel = 0;
 ovC.addEventListener('wheel', (e) => {
   e.preventDefault();
   const v = view();
-  if (gp.it) {
+  if (gp.it && (S.tool === 'func' || S.tool === 'plane')) {
     const [wx, wy] = toWorld(e.clientX, e.clientY);
     if (inPlane(gp.it, wx, wy)) { gpWheel += e.deltaY; if (Math.abs(gpWheel) >= 60) { zoomPlane(gp.it, gpWheel > 0 ? 1 : -1, wx, wy); gpWheel = 0; } return; }
   }
@@ -1122,7 +1159,7 @@ function constrain(it, x, y) {
 function eraseAt(x, y) {
   const items = P().items, r = WIDTHS.eraser.v / 2 / view().s;
   for (let i = items.length - 1; i >= 0; i--) {
-    if (items[i].t === 'image') continue;
+    if (items[i].t === 'image' || items[i].t === 'plane') continue;
     if (hit(items[i], x, y, r)) {
       if (!act.did) { snap(); act.did = true; }
       const [it] = items.splice(i, 1); S.sel = S.sel.filter((s) => s !== it); cacheValid = false;
@@ -1293,7 +1330,7 @@ function openEditor(o) {
     const size = r2(WIDTHS.text.v / v.s);
     st = { x: o.x, y: o.y - size * 0.65, c: S.color, size, orig: '', before: null, idx: -1 };
   }
-  edState = st; ed.value = st.orig; ed.style.color = st.c; ed.style.display = 'block';
+  edState = st; ed.value = st.orig; ed.style.color = inkColor(st.c); ed.style.display = 'block';
   cacheValid = false; layoutEditor(); req();
   setTimeout(() => { ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); }, 0);
 }
@@ -1303,7 +1340,7 @@ function layoutEditor() {
   measureX.font = FONT(fs);
   const lines = ed.value.split('\n');
   const w = Math.max(...lines.map((l) => measureX.measureText(l).width)) + fs * 0.8;
-  Object.assign(ed.style, { left: sx - 2 + 'px', top: sy - 1 + 'px', fontSize: fs + 'px', lineHeight: fs * 1.25 + 'px', width: Math.max(fs * 1.2, w) + 'px', height: lines.length * fs * 1.25 + 2 + 'px', color: edState.c });
+  Object.assign(ed.style, { left: sx - 2 + 'px', top: sy - 1 + 'px', fontSize: fs + 'px', lineHeight: fs * 1.25 + 'px', width: Math.max(fs * 1.2, w) + 'px', height: lines.length * fs * 1.25 + 2 + 'px', color: inkColor(edState.c) });
 }
 function commitEditor() {
   if (!edState) return;
@@ -1338,8 +1375,9 @@ $('#gpClose').innerHTML = ico('x2'); $('#kpClose').innerHTML = ico('x2'); $('#gp
 
 function openGraphPanel(it, isNew) {
   commitEditor(); closePops(); closeHelp();
+  if (S.tool !== 'func' && S.tool !== 'plane') { if (gp.it) closeGraphPanel(); setTool('func'); }
   if (gp.it && gp.it !== it) closeGraphPanel();
-  if (gp.it !== it) { gp.it = it; gp.before = isNew ? null : JSON.stringify(P().items); }
+  if (gp.it !== it) { gp.it = it; gp.page = P(); gp.before = isNew ? null : JSON.stringify(P().items); }
   exOf(it);
   if (!it.ex.length) it.ex.push({ e: '', c: FX_COLORS[0] });
   buildGPRows(); syncGPOpts(); updateGPStatus();
@@ -1352,8 +1390,9 @@ function closeGraphPanel() {
   if (!gp.it) return;
   const it = gp.it; gp.playing.clear();
   it.ex = it.ex.filter((r) => r.e.trim());
-  if (gp.before !== null && gp.before !== JSON.stringify(P().items)) { P().undo.push(gp.before); P().redo = []; }
-  gp.it = null; gp.before = null;
+  const pg = gp.page || P();
+  if (gp.before !== null && pg.items.includes(it) && gp.before !== JSON.stringify(pg.items)) { pg.undo.push(gp.before); pg.redo = []; }
+  gp.it = null; gp.before = null; gp.page = null;
   $('#graphPanel').classList.remove('show');
   if (document.activeElement && $('#graphPanel').contains(document.activeElement)) document.activeElement.blur();
   changed();
@@ -1610,7 +1649,7 @@ function renderPageCanvas(p, scale = 2) {
   drawBg(x1, p, v, cw, ch, 1);
   x1.setTransform(sc, 0, 0, sc, v.x, v.y); drawImages(x1, p);
   x2.setTransform(sc, 0, 0, sc, v.x, v.y);
-  for (const it of p.items) drawItem(x2, it);
+  for (const it of p.items) drawSafe(x2, it);
   x1.setTransform(1, 0, 0, 1, 0, 0); x1.drawImage(c2, 0, 0);
   paintBoard = BOARDS[P().board] || BOARDS.white;
   return c1;
@@ -1721,11 +1760,7 @@ const COLOR_NAMES = { '#1d1d1f': 'negro', '#ffffff': 'blanco', '#e03131': 'rojo'
 const colorName = (c) => COLOR_NAMES[String(c).toLowerCase()] || '';
 function savePresets() { try { localStorage.setItem('mi-pizarra-presets', JSON.stringify({ list: S.presets, i: S.pi })); } catch (_) {} }
 const curPreset = () => S.presets[S.pi] || S.presets[0];
-function inkColor(c) {
-  const b = BOARDS[P().board] || BOARDS.white, dark = P().board === 'chalk' || P().board === 'dark';
-  if (dark && c === '#1d1d1f') return b.ink;
-  return c;
-}
+function inkColor(c) { return adapt(c, BOARDS[P().board] || BOARDS.white); }
 function buildTools() {
   const box = $('#tools'); box.innerHTML = '';
   const mk = (id, title) => {
@@ -1764,6 +1799,7 @@ function buildPresets() {
 }
 function setTool(t) {
   if (t !== 'text') commitEditor();
+  if (gp.it && t !== 'func' && t !== 'plane') closeGraphPanel();
   if (SHAPES.some((s) => s[0] === t)) S.lastShape = t;
   S.tool = t; laserOn = false;
   if (t !== 'select') S.sel = [];
@@ -1813,7 +1849,7 @@ $('#btnStyle').onclick = (e) => { togglePop('#stylePop', e.currentTarget); build
 function buildColors() {
   const box = $('#colors'), c = toolColor();
   const inPal = PALETTE.includes(c.toLowerCase());
-  box.innerHTML = PALETTE.map((p) => `<button class="sw${p === c ? ' on' : ''}" style="background:${inkColor(p)}" data-c="${p}" title="${p}"></button>`).join('') +
+  box.innerHTML = PALETTE.map((p) => `<button class="sw${p === c ? ' on' : ''}" style="background:${p === AUTO_DARK ? inkColor(p) : p}" data-c="${p}" title="${p}"></button>`).join('') +
     `<label class="sw custom${inPal ? '' : ' on'}" title="Otro color"${inPal ? '' : ` style="background:${c}"`}><input type="color" value="${c}"></label>`;
   box.querySelectorAll('[data-c]').forEach((b) => (b.onclick = () => setColor(b.dataset.c)));
   const inp = box.querySelector('input'); inp.oninput = () => setColor(inp.value, true); inp.onchange = () => setColor(inp.value);
@@ -1912,8 +1948,7 @@ function updateBgPop() {
   m.querySelectorAll('[data-bg]').forEach((b) => (b.onclick = () => { P().bg = b.dataset.bg; updateBgPop(); changed(); }));
   m.querySelectorAll('[data-board]').forEach((b) => (b.onclick = () => {
     const old = BOARDS[P().board]; P().board = b.dataset.board;
-    if (S.color === old.ink) S.color = BOARDS[P().board].ink;
-    syncColorToBoard();
+    void old; syncColorToBoard(); cacheValid = false;
     buildColors(); updateBgPop(); changed();
   }));
 }
@@ -1921,8 +1956,8 @@ function syncColorToBoard() {
   const b = BOARDS[P().board];
   document.body.classList.toggle('dark', P().board === 'chalk' || P().board === 'dark');
   if ($('#presets')) { buildPresets(); buildStyleBtn(); }
-  const other = Object.values(BOARDS).map((x) => x.ink);
-  if (other.includes(S.color) && S.color !== b.ink) { S.color = b.ink; buildColors(); }
+  if (['#f6f6ef', '#f5f5f5'].includes(String(S.color).toLowerCase())) S.color = AUTO_DARK;
+  void b;
 }
 /* ---------- App instalable (PWA) ---------- */
 let installEvt = null;
@@ -1970,14 +2005,20 @@ function paste(offset = 30) {
 }
 window.addEventListener('keydown', (e) => {
   if ($('#modalBg').classList.contains('show')) { if (e.key === 'Escape' || e.key === 'Enter') closeAbout(); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && ['s', 'o', 'p'].includes(e.key.toLowerCase())) {
+    e.preventDefault(); const kk = e.key.toLowerCase();
+    if (kk === 's') save(e.shiftKey); else if (kk === 'o') openFile(); else exportPDF();
+    return;
+  }
   if (gp.it && e.key === 'Escape') { closeGraphPanel(); setTool('hand'); return; }
   if (e.key === 'Escape' && $('#keysPanel').classList.contains('show')) { closeHelp(); return; }
-  if (e.key === '?') { showHelp(); return; }
   if (e.target === ed) {
     if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); commitEditor(); if (e.key === 'Escape') setTool('hand'); }
     return;
   }
-  if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+  const tg = e.target.tagName;
+  if ((tg === 'INPUT' && e.target.type !== 'range') || tg === 'SELECT' || tg === 'TEXTAREA' || e.target.isContentEditable) return;
+  if (e.key === '?') { showHelp(); return; }
   const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
   if (mod) {
     const map = {
@@ -1993,7 +2034,10 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === ' ') { e.preventDefault(); if (!spaceDown) { spaceDown = true; setCursor(); } return; }
   if (e.key === 'Delete' || e.key === 'Backspace') { deleteSel(); return; }
-  if (e.key === 'Escape') { closePops(); S.sel = []; setTool('hand'); return; }
+  if (e.key === 'Escape') {
+    if (document.querySelector('.pop.show')) { closePops(); return; }
+    S.sel = []; setTool('hand'); return;
+  }
   if (e.key === 'PageDown') { e.preventDefault(); goPage(cur + 1); return; }
   if (e.key === 'PageUp') { e.preventDefault(); goPage(cur - 1); return; }
   if (e.key === 'Tab') { e.preventDefault(); togglePresent(); return; }
@@ -2017,7 +2061,10 @@ window.addEventListener('keydown', (e) => {
   const keys = { e: 'eraser', v: 'select', l: 'line', a: 'arrow', r: 'rect', o: 'ellipse', y: 'triangle', g: 'plane', f: 'func', t: 'text', k: 'laser', h: 'hand' };
   if (keys[k] && !e.altKey) setTool(keys[k]);
 });
-window.addEventListener('keyup', (e) => { if (e.key === ' ') { spaceDown = false; setCursor(); } });
+window.addEventListener('keyup', (e) => { if (e.key === ' ') { e.preventDefault(); spaceDown = false; setCursor(); } });
+window.addEventListener('blur', () => { if (spaceDown) { spaceDown = false; setCursor(); } });
+// Los botones de las barras no se quedan con el foco: así Espacio o Enter no repiten la última acción (p. ej. Limpiar página).
+document.addEventListener('click', (e) => { const b = e.target.closest('.bar button, .pop button'); if (b && b !== document.activeElement?.closest('input')) b.blur(); });
 window.addEventListener('resize', resize);
 window.addEventListener('beforeunload', autosave);
 window.addEventListener('dragover', (e) => e.preventDefault());
@@ -2041,6 +2088,45 @@ function wire() {
   document.querySelectorAll('.bar, .pop').forEach((b) => b.addEventListener('pointerdown', (e) => { if (e.target.closest('button,label') && edState && !e.target.closest('#symbols')) e.preventDefault(); }));
 }
 
+
+/* ---------- Novedades de la versión (aparece una vez por versión) ---------- */
+const APP_VERSION = '1.2.7';
+const CHANGELOG = [
+  ['🆕', 'Este aviso: cada vez que salga una versión nueva verás aquí qué cambió.'],
+  ['🎨', 'Lo escrito en negro ahora se ve en tiza blanca en las pizarras verde y oscura, y los colores se aclaran para leerse mejor.'],
+  ['📈', 'Gráficas: moverte por la pizarra ya no deja rastros, al elegir otra herramienta se cierra el panel y puedes mover la gráfica completa con Seleccionar.'],
+  ['✨', 'Regiones sombreadas más limpias y sin puntos repetidos cuando dos curvas coinciden.'],
+  ['💾', 'Ctrl+S, Ctrl+O y Ctrl+P funcionan también mientras escribes en el panel de gráfica.'],
+  ['⌨️', 'Atajos de teclado en un panel lateral (F1 o ?), y Esc te devuelve a la mano de mover.'],
+  ['🧹', 'El borrador de trazo completo ya no borra gráficas ni imágenes.']
+];
+function initWhatsNew() {
+  let seen = null, returning = false;
+  try { seen = localStorage.getItem('mi-pizarra-version-vista'); returning = !!localStorage.getItem('mi-pizarra-autosave'); localStorage.setItem('mi-pizarra-version-vista', APP_VERSION); } catch (_) { return; }
+  if (seen === APP_VERSION) return;
+  if (!seen && !returning) return; // primera visita: no es una actualización
+  const box = $('#whatsNew'), list = $('#wnList'), title = $('#wnTitle');
+  title.textContent = '¡Mi Pizarra se actualizó!';
+  const sm = document.createElement('small'); sm.textContent = `Versión ${APP_VERSION} · ver novedades`; title.appendChild(sm);
+  $('#wnSub').textContent = `Novedades de la versión ${APP_VERSION}`;
+  list.textContent = '';
+  for (const [e, t] of CHANGELOG) {
+    const li = document.createElement('li'); const a = document.createElement('span'); a.className = 'e'; a.textContent = e;
+    const b = document.createElement('span'); b.textContent = t; li.append(a, b); list.appendChild(li);
+  }
+  box.hidden = false;
+  let timer = setTimeout(() => { if (!box.classList.contains('open')) closeWN(); }, 20000);
+  const toggle = () => {
+    clearTimeout(timer);
+    const open = box.classList.toggle('open');
+    $('#wnToggle').setAttribute('aria-expanded', String(open));
+    sm.textContent = open ? `Versión ${APP_VERSION}` : `Versión ${APP_VERSION} · ver novedades`;
+  };
+  function closeWN() { clearTimeout(timer); box.classList.add('leaving'); setTimeout(() => { box.hidden = true; box.classList.remove('leaving', 'open'); }, 220); }
+  $('#wnToggle').onclick = toggle;
+  $('#wnClose').onclick = closeWN;
+}
+
 async function init() {
   doc = { pages: [mkPage()] };
   resize(); wire(); buildTools(); buildMenu(); buildSymbols();
@@ -2056,6 +2142,7 @@ async function init() {
   } catch (_) {}
   buildAssist();
   syncColorToBoard(); setTool('pen'); afterPageChange();
+  initWhatsNew();
 }
 init();
 })();

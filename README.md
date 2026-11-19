@@ -100,6 +100,12 @@ Otros atajos: Ctrl+Z / Ctrl+Y, Supr, Ctrl+C / V / D, Ctrl+A, AvPág / RePág, Ct
 - Las imágenes quedan **debajo de la tinta**: puedes escribir y borrar encima sin dañarlas.
 - Con Seleccionar (V): arrastra para mover, usa el punto azul de la esquina para cambiar el tamaño y Supr para eliminarla.
 
+## Publicar una versión nueva
+
+1. En `script.js` cambia `APP_VERSION` y escribe los cambios en `CHANGELOG` (emoji + texto).
+2. En `index.html` y `sw.js` cambia el número de versión (`?v=…` y `VERSION`).
+3. Haz commit y push. Quien ya usaba Mi Pizarra verá una sola vez, abajo a la derecha, el aviso de novedades de esa versión (las personas nuevas no lo ven).
+
 ## Créditos
 
 Hecho por **José Luciano Mejía Arias** · [Instagram](https://instagram.com/lucianomejia17) · [GitHub](https://github.com/LucianoMejia) · [LinkedIn](https://www.linkedin.com/in/jos%C3%A9-luciano-mej%C3%ADa-arias-a35806383/). También aparece en Menú → Acerca de Mi Pizarra.
