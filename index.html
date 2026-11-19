@@ -19,10 +19,10 @@
 <meta name="apple-mobile-web-app-title" content="Mi Pizarra">
 <link rel="manifest" href="manifest.webmanifest">
 <title>Mi Pizarra</title>
-<link rel="icon" href="logo.svg?v=1.2.0" type="image/svg+xml">
-<link rel="alternate icon" href="favicon.ico?v=1.2.0">
-<link rel="apple-touch-icon" href="icon-180.png?v=1.2.0">
-<link rel="stylesheet" href="styles.css?v=1.2.0">
+<link rel="icon" href="logo.svg?v=1.2.3" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico?v=1.2.3">
+<link rel="apple-touch-icon" href="icon-180.png?v=1.2.3">
+<link rel="stylesheet" href="styles.css?v=1.2.3">
 </head>
 <body>
 <canvas id="bg"></canvas>
@@ -30,7 +30,7 @@
 <canvas id="ov"></canvas>
 <textarea id="editor" spellcheck="false"></textarea>
 
-<div id="brand"><img src="logo.svg?v=1.2.0" alt="" width="28" height="28"><span>Mi Pizarra</span></div>
+<div id="brand"><img src="logo.svg?v=1.2.3" alt="" width="28" height="28"><span>Mi Pizarra</span></div>
 
 <div id="topbar" class="bar">
   <button class="ib" id="btnMenu" title="Menú"></button>
@@ -95,7 +95,7 @@
   <p class="note">Estabiliza la mano mientras escribes y pule el trazo al soltar. Los bolígrafos y la pluma además afinan las puntas y varían el grosor según la velocidad, como tinta real.</p>
 </div>
 
-<aside id="graphPanel" aria-label="Gráfica">
+<aside id="graphPanel" class="sheet" aria-label="Gráfica">
   <header>
     <h3>Gráfica</h3>
     <button class="ib" id="gpClose" title="Cerrar (Esc)"></button>
@@ -132,11 +132,67 @@
   </div>
 </aside>
 
+<aside id="keysPanel" class="sheet" aria-label="Atajos de teclado">
+  <header>
+    <h3>Atajos</h3>
+    <button class="ib" id="kpClose" title="Cerrar (Esc)"></button>
+  </header>
+  <div class="gp-body">
+    <section class="kgroup">
+      <h4>Herramientas</h4>
+        <div class="krow"><span class="kk"><kbd>V</kbd></span><span>Seleccionar y mover</span></div>
+        <div class="krow"><span class="kk"><kbd>1</kbd><i>…</i><kbd>9</kbd></span><span>Elegir lápiz de la bandeja</span></div>
+        <div class="krow"><span class="kk"><kbd>.</kbd><kbd>,</kbd></span><span>Lápiz siguiente / anterior</span></div>
+        <div class="krow"><span class="kk"><kbd>P</kbd><kbd>M</kbd></span><span>Último bolígrafo / resaltador</span></div>
+        <div class="krow"><span class="kk"><kbd>E</kbd></span><span>Borrador</span></div>
+        <div class="krow"><span class="kk"><kbd>T</kbd></span><span>Texto y símbolos</span></div>
+        <div class="krow"><span class="kk"><kbd>L</kbd><kbd>A</kbd><kbd>R</kbd><kbd>O</kbd><kbd>Y</kbd></span><span>Línea, flecha, rectángulo, elipse, triángulo</span></div>
+        <div class="krow"><span class="kk"><kbd>G</kbd><kbd>F</kbd></span><span>Plano cartesiano / gráfica</span></div>
+        <div class="krow"><span class="kk"><kbd>K</kbd></span><span>Puntero láser</span></div>
+        <div class="krow"><span class="kk"><kbd>H</kbd></span><span>Mano de mover</span></div>
+        <div class="krow"><span class="kk"><kbd>Espacio</kbd></span><span>Mano mientras lo mantienes</span></div>
+        <div class="krow"><span class="kk"><kbd>Esc</kbd></span><span>Volver a la mano</span></div>
+    </section>
+    <section class="kgroup">
+      <h4>Vista</h4>
+        <div class="krow"><span class="kk"><kbd>+</kbd><kbd>−</kbd></span><span>Acercar / alejar</span></div>
+        <div class="krow"><span class="kk"><kbd>0</kbd></span><span>Zoom 100 %</span></div>
+        <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>Rueda</kbd></span><span>Zoom con el mouse</span></div>
+        <div class="krow"><span class="kk"><kbd>Tab</kbd></span><span>Modo presentación</span></div>
+        <div class="krow"><span class="kk"><kbd>F11</kbd></span><span>Pantalla completa</span></div>
+    </section>
+    <section class="kgroup">
+      <h4>Edición</h4>
+        <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>Z</kbd></span><span>Deshacer</span></div>
+        <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>Y</kbd></span><span>Rehacer</span></div>
+        <div class="krow"><span class="kk"><kbd>Supr</kbd></span><span>Borrar selección</span></div>
+        <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>C</kbd><kbd>V</kbd></span><span>Copiar / pegar (también imágenes)</span></div>
+        <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>D</kbd></span><span>Duplicar selección</span></div>
+        <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>A</kbd></span><span>Seleccionar todo</span></div>
+        <div class="krow"><span class="kk"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd></span><span>Mover selección (con Mayús, más rápido)</span></div>
+    </section>
+    <section class="kgroup">
+      <h4>Páginas y archivo</h4>
+        <div class="krow"><span class="kk"><kbd>AvPág</kbd><kbd>RePág</kbd></span><span>Página siguiente / anterior</span></div>
+        <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>S</kbd></span><span>Guardar</span></div>
+        <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>O</kbd></span><span>Abrir</span></div>
+        <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>P</kbd></span><span>Exportar a PDF</span></div>
+    </section>
+    <section class="kgroup tips">
+      <h4>Trucos</h4>
+      <p>✏️ Dibuja una figura y <b>deja el lápiz quieto</b> al final para que quede perfecta.</p>
+      <p>📐 Mantén <kbd>Mayús</kbd> al usar figuras para líneas rectas y figuras cuadradas.</p>
+      <p>🖊️ Con lápiz digital: la presión cambia el grosor, la punta borradora borra y el botón lateral mueve el lienzo.</p>
+      <p>🎛️ ¿Tienes tableta? Asigna estas teclas a sus botones para cambiar de lápiz o hacer zoom sin el teclado.</p>
+    </section>
+  </div>
+</aside>
+
 <div id="modalBg">
   <div class="modal about">
-    <img src="logo.svg?v=1.2.0" alt="" width="72" height="72">
+    <img src="logo.svg?v=1.2.3" alt="" width="72" height="72">
     <h3>Mi Pizarra</h3>
-    <p class="ver">Versión 1.2.0<br>Tu pizarra digital para clases, tutorías e ideas</p>
+    <p class="ver">Versión 1.2.3<br>Tu pizarra digital para clases, tutorías e ideas</p>
     <p>Hecho por <strong>José Luciano Mejía Arias</strong></p>
     <div class="socials">
       <a class="ig" href="https://instagram.com/lucianomejia17" target="_blank" rel="noopener"><span class="badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.8"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/></svg></span>Instagram</a>
@@ -149,6 +205,6 @@
 
 <div id="toast"></div>
 <input type="file" id="fileInput" accept=".pizarra,.json">
-<script src="script.js?v=1.2.0"></script>
+<script src="script.js?v=1.2.3"></script>
 </body>
 </html>

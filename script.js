@@ -92,7 +92,7 @@ const cacheC = document.createElement('canvas'), cacheX = cacheC.getContext('2d'
 const measureX = document.createElement('canvas').getContext('2d');
 let W = 0, H = 0, DPR = 1;
 
-const S = { tool: 'pen', lastShape: 'line', color: '#1d1d1f', eraserMode: 'area', sel: [], shapeAssist: true, smooth: 2, presets: DEFAULT_PRESETS.map((p) => ({ ...p })), pi: 0, lastPen: 0, lastHl: 5 };
+const S = { tool: 'pen', lastShape: 'line', color: '#1d1d1f', eraserMode: 'area', sel: [], shapeAssist: true, smooth: 2, penBtn: 'pan', wheel: 'pan', presets: DEFAULT_PRESETS.map((p) => ({ ...p })), pi: 0, lastPen: 0, lastHl: 5 };
 const SMOOTH = [0, 0.35, 0.55, 0.72];
 const HOLD_MS = 480;
 let doc, cur = 0, filePath = null;
@@ -934,12 +934,14 @@ ovC.addEventListener('pointerdown', (e) => {
     touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (touches.size === 2) { live = null; useCache = false; laserOn = false; act = startPinch(); req(); return; }
     if (touches.size > 2) return;
-    if (penSeen) { ovC.setPointerCapture(e.pointerId); startPan(e); return; }
+    if (penSeen) { try { ovC.setPointerCapture(e.pointerId); } catch (_) {} startPan(e); return; }
   }
-  ovC.setPointerCapture(e.pointerId);
+  try { ovC.setPointerCapture(e.pointerId); } catch (_) {}
   hover = [e.clientX, e.clientY];
-  if (e.button === 1 || e.button === 2 || spaceDown || S.tool === 'hand') { startPan(e); return; }
-  const penEraser = e.pointerType === 'pen' && (e.button === 5 || (e.buttons & 32));
+  const barrel = e.pointerType === 'pen' && e.button === 2;
+  if (barrel && S.penBtn === 'next') { cyclePen(1); return; }
+  if (e.button === 1 || (e.button === 2 && !(barrel && S.penBtn === 'eraser')) || spaceDown || S.tool === 'hand') { startPan(e); return; }
+  const penEraser = e.pointerType === 'pen' && (e.button === 5 || (e.buttons & 32) || (barrel && S.penBtn === 'eraser'));
   if (e.button !== 0 && !penEraser) return;
   const tool = penEraser ? 'eraser' : S.tool;
   const v = view(); const [wx, wy] = toWorld(e.clientX, e.clientY);
@@ -1102,6 +1104,7 @@ ovC.addEventListener('wheel', (e) => {
     if (inPlane(gp.it, wx, wy)) { gpWheel += e.deltaY; if (Math.abs(gpWheel) >= 60) { zoomPlane(gp.it, gpWheel > 0 ? 1 : -1, wx, wy); gpWheel = 0; } return; }
   }
   if (e.ctrlKey || e.metaKey) { zoomAt(Math.exp(-clamp(e.deltaY, -60, 60) * 0.008), e.clientX, e.clientY); return; }
+  if (S.wheel === 'zoom' && !e.shiftKey) { zoomAt(Math.exp(-clamp(e.deltaY, -60, 60) * 0.006), e.clientX, e.clientY); return; }
   if (e.shiftKey && !e.deltaX) v.x -= e.deltaY; else { v.x -= e.deltaX; v.y -= e.deltaY; }
   cacheValid = false; req();
 }, { passive: false });
@@ -1331,10 +1334,10 @@ const MINI = {
 };
 const miniIco = (n) => `<svg viewBox="0 0 24 24">${MINI[n]}</svg>`;
 for (const id of ['#gpKx', '#gpKy']) $(id).innerHTML = KS.map((k) => `<option value="${k}">${String(k).replace('.', ',')}</option>`).join('');
-$('#gpClose').innerHTML = ico('x2'); $('#gpZoomIn').innerHTML = ico('plus'); $('#gpZoomOut').innerHTML = ico('minus');
+$('#gpClose').innerHTML = ico('x2'); $('#kpClose').innerHTML = ico('x2'); $('#gpZoomIn').innerHTML = ico('plus'); $('#gpZoomOut').innerHTML = ico('minus');
 
 function openGraphPanel(it, isNew) {
-  commitEditor(); closePops();
+  commitEditor(); closePops(); closeHelp();
   if (gp.it && gp.it !== it) closeGraphPanel();
   if (gp.it !== it) { gp.it = it; gp.before = isNew ? null : JSON.stringify(P().items); }
   exOf(it);
@@ -1372,7 +1375,7 @@ function buildGPRows() {
     inp.oninput = () => { r.e = inp.value; gpChanged(); };
     inp.onkeydown = (e) => {
       if (e.key === 'Enter') { e.preventDefault(); const next = box.querySelectorAll('input[type=text]')[i + 1]; if (next) next.focus(); else addGPRow(); }
-      if (e.key === 'Escape') { e.preventDefault(); closeGraphPanel(); }
+      if (e.key === 'Escape') { e.preventDefault(); closeGraphPanel(); setTool('hand'); }
     };
     eye.onclick = () => { r.hide = !r.hide; buildGPRows(); gpChanged(); };
     del.onclick = () => { gp.it.ex.splice(i, 1); if (!gp.it.ex.length) gp.it.ex.push({ e: '', c: FX_COLORS[0] }); buildGPRows(); gpChanged(); };
@@ -1706,6 +1709,16 @@ let toastT = 0;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1800); }
 
 /* ---------- Bandeja de lápices ---------- */
+const zoomCenter = () => (hover ? [hover[0], hover[1]] : [W / 2, H / 2]);
+function selectPen(i) {
+  S.pi = clamp(i, 0, S.presets.length - 1); const p = S.presets[S.pi];
+  if (p.k === 'hl') S.lastHl = S.pi; else S.lastPen = S.pi;
+  savePresets(); setTool('pen');
+  toast(`${S.pi < 9 ? S.pi + 1 + ' · ' : ''}${KINDS[p.k].name} ${colorName(p.c)} · grosor ${p.w}`);
+}
+function cyclePen(d) { const n = S.presets.length; selectPen(S.tool === 'pen' ? (S.pi + d + n) % n : S.pi); }
+const COLOR_NAMES = { '#1d1d1f': 'negro', '#ffffff': 'blanco', '#e03131': 'rojo', '#1971c2': 'azul', '#2f9e44': 'verde', '#f08c00': 'naranja', '#9c36b5': 'morado', '#fcc419': 'amarillo', '#69db7c': 'verde claro' };
+const colorName = (c) => COLOR_NAMES[String(c).toLowerCase()] || '';
 function savePresets() { try { localStorage.setItem('mi-pizarra-presets', JSON.stringify({ list: S.presets, i: S.pi })); } catch (_) {} }
 const curPreset = () => S.presets[S.pi] || S.presets[0];
 function inkColor(c) {
@@ -1939,30 +1952,13 @@ function closeAbout() { $('#modalBg').classList.remove('show'); if (document.act
 $('#aboutOk').onclick = closeAbout;
 $('#modalBg').addEventListener('pointerdown', (e) => { if (e.target.id === 'modalBg') closeAbout(); });
 function showHelp() {
-  alert([
-    'ATAJOS DE TECLADO', '',
-    '1…9  Elegir lápiz de la bandeja   P  Último bolígrafo   M  Último resaltador   E  Borrador',
-    'Toca otra vez el lápiz activo para cambiar su tipo, color y grosor; + agrega uno nuevo.',
-    'V  Seleccionar    T  Texto            K  Puntero láser',
-    'L  Línea   A  Flecha   R  Rectángulo   O  Elipse   Y  Triángulo',
-    'G  Plano cartesiano     F  Graficar (tipo GeoGebra: funciones, deslizadores, puntos, regiones)',
-    'H o Espacio (mantener)  Mover el lienzo',
-    '', 'Ctrl+Z / Ctrl+Y   Deshacer / Rehacer',
-    'Supr               Borrar selección',
-    'Ctrl+C / Ctrl+V / Ctrl+D   Copiar / Pegar / Duplicar',
-    'Ctrl+A             Seleccionar todo',
-    'AvPág / RePág      Página siguiente / anterior',
-    'Ctrl+rueda         Zoom      Rueda: desplazar',
-    'Ctrl+0             Zoom 100%',
-    'Mayús al dibujar figuras: líneas rectas a 15° y figuras cuadradas',
-    'Doble clic sobre un plano (con Seleccionar): editar funciones',
-    'Lápiz: dibuja una línea o figura y deja el lápiz quieto al final para corregirla',
-    'Lápiz digital: la presión cambia el grosor; el botón borrador del lápiz borra.',
-    '', 'Ctrl+S Guardar   Ctrl+O Abrir   Ctrl+P Exportar PDF   F11 Pantalla completa   Tab Ocultar barras',
-    'También puedes arrastrar un archivo .pizarra a la ventana para abrirlo.',
-    'Imágenes: Ctrl+V para pegar, o arrástralas a la ventana. Con Seleccionar, arrastra la esquina para cambiar el tamaño.'
-  ].join('\n'));
+  const p = $('#keysPanel');
+  if (p.classList.contains('show')) { closeHelp(); return; }
+  closePops(); if (gp.it) closeGraphPanel();
+  p.classList.add('show');
 }
+function closeHelp() { $('#keysPanel').classList.remove('show'); }
+$('#kpClose').onclick = closeHelp;
 
 /* ---------- Teclado ---------- */
 function deleteSel() { if (!S.sel.length) return; if (gp.it && S.sel.includes(gp.it)) closeGraphPanel(); snap(); const set = new Set(S.sel); P().items = P().items.filter((i) => !set.has(i)); S.sel = []; changed(); }
@@ -1974,9 +1970,11 @@ function paste(offset = 30) {
 }
 window.addEventListener('keydown', (e) => {
   if ($('#modalBg').classList.contains('show')) { if (e.key === 'Escape' || e.key === 'Enter') closeAbout(); return; }
-  if (gp.it && e.key === 'Escape') { closeGraphPanel(); return; }
+  if (gp.it && e.key === 'Escape') { closeGraphPanel(); setTool('hand'); return; }
+  if (e.key === 'Escape' && $('#keysPanel').classList.contains('show')) { closeHelp(); return; }
+  if (e.key === '?') { showHelp(); return; }
   if (e.target === ed) {
-    if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); commitEditor(); }
+    if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); commitEditor(); if (e.key === 'Escape') setTool('hand'); }
     return;
   }
   if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
@@ -1995,7 +1993,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === ' ') { e.preventDefault(); if (!spaceDown) { spaceDown = true; setCursor(); } return; }
   if (e.key === 'Delete' || e.key === 'Backspace') { deleteSel(); return; }
-  if (e.key === 'Escape') { S.sel = []; closePops(); req(); return; }
+  if (e.key === 'Escape') { closePops(); S.sel = []; setTool('hand'); return; }
   if (e.key === 'PageDown') { e.preventDefault(); goPage(cur + 1); return; }
   if (e.key === 'PageUp') { e.preventDefault(); goPage(cur - 1); return; }
   if (e.key === 'Tab') { e.preventDefault(); togglePresent(); return; }
@@ -2004,7 +2002,12 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault(); const d = (e.shiftKey ? 10 : 1) / view().s;
     snap(); for (const it of S.sel) moveItem(it, e.key === 'ArrowLeft' ? -d : e.key === 'ArrowRight' ? d : 0, e.key === 'ArrowUp' ? -d : e.key === 'ArrowDown' ? d : 0); changed(); return;
   }
-  if (/^[1-9]$/.test(e.key) && S.presets[+e.key - 1]) { S.pi = +e.key - 1; setTool('pen'); return; }
+  if (/^[1-9]$/.test(e.key) && S.presets[+e.key - 1]) { selectPen(+e.key - 1); return; }
+  if (e.code === 'Numpad0' || (e.key === '0' && !e.shiftKey)) { const v = view(); zoomAt(1 / v.s, W / 2, H / 2); return; }
+  if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') { e.preventDefault(); zoomAt(1.25, ...zoomCenter()); return; }
+  if (e.key === '-' || e.code === 'NumpadSubtract') { e.preventDefault(); zoomAt(1 / 1.25, ...zoomCenter()); return; }
+  if (e.key === '.' || e.code === 'NumpadDecimal') { cyclePen(1); return; }
+  if (e.key === ',') { cyclePen(-1); return; }
   if (k === 'p' || k === 'm') {
     const want = k === 'm'; let i = want ? S.lastHl : S.lastPen;
     if (!S.presets[i] || (S.presets[i].k === 'hl') !== want) i = S.presets.findIndex((q) => (q.k === 'hl') === want);

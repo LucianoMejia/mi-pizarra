@@ -190,6 +190,10 @@ body.dark .seg button.on{ background:#636366; }
 .boardsw button{ width:44px; height:30px; border-radius:8px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out); }
 .boardsw button.on{ box-shadow: 0 0 0 2px var(--material-strong), 0 0 0 4px var(--accent); }
 .boardsw button:active{ transform:scale(0.95); }
+.row.col{ flex-direction:column; align-items:flex-start; gap:8px; }
+.row.col .seg{ margin-left:0; }
+.pop kbd, .sheet kbd{ display:inline-block; min-width:18px; padding:1px 5px; border-radius:5px; background:var(--fill); box-shadow:inset 0 -1px 0 var(--separator); font:500 11.5px/1.5 var(--font-ui); color:var(--ink); text-align:center; }
+#assistPop{ width:300px; max-height:calc(100vh - 90px); overflow:auto; }
 .row{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:8px 10px; font-size:14px; }
 
 /* Interruptor estilo iOS */
@@ -280,8 +284,21 @@ body.dark .socials .gh .badge{ background:#F5F5F7; color:#111; }
 .widths .seg{ margin:6px 4px 2px; }
 .pop .item.danger{ color:var(--danger); }
 
+/* ---------- Panel de atajos ---------- */
+#keysPanel{ width:min(380px, calc(100vw - 24px)); }
+.kgroup{ padding:6px 2px 10px; }
+.kgroup + .kgroup{ border-top:.5px solid var(--separator); }
+.kgroup h4{ margin:8px 6px 8px; font:600 11px/1 var(--font-ui); letter-spacing:.04em; text-transform:uppercase; color:var(--ink-faint); }
+.krow{ display:grid; grid-template-columns:132px 1fr; align-items:center; gap:12px; padding:5px 6px; border-radius:8px; font-size:13.5px; color:var(--ink); }
+@media (hover:hover) and (pointer:fine){ .krow:hover{ background:var(--fill); } }
+.krow .kk{ display:flex; align-items:center; gap:3px; flex-wrap:wrap; }
+.krow .kk i{ font-style:normal; color:var(--ink-faint); font-size:11px; padding:0 1px; }
+.sheet kbd{ min-width:22px; padding:2px 6px; font-size:12px; line-height:1.5; border-radius:6px; background:var(--panel); box-shadow:0 0 0 .5px var(--rule), 0 1px 0 var(--rule); }
+.tips p{ margin:6px 6px 8px; font-size:13px; line-height:1.5; color:var(--ink-soft); }
+.tips b{ color:var(--ink); font-weight:600; }
+
 /* ---------- Panel de gráfica (hoja lateral) ---------- */
-#graphPanel{
+.sheet{
   position:absolute; z-index:20; top:70px; right:12px; bottom:76px; width:min(360px, calc(100vw - 24px));
   display:flex; flex-direction:column;
   background:var(--material-strong);
@@ -291,9 +308,9 @@ body.dark .socials .gh .badge{ background:#F5F5F7; color:#111; }
   transition: opacity 220ms var(--ease-out), transform 260ms var(--ease-drawer), visibility 0s linear 260ms;
   user-select:text;
 }
-#graphPanel.show{ opacity:1; transform:none; visibility:visible; pointer-events:auto; transition: opacity 220ms var(--ease-out), transform 260ms var(--ease-drawer), visibility 0s; }
-#graphPanel header{ display:flex; align-items:center; justify-content:space-between; padding:12px 10px 4px 18px; }
-#graphPanel h3{ margin:0; font:600 19px/1.2 var(--font-display); letter-spacing:-0.022em; }
+.sheet.show{ opacity:1; transform:none; visibility:visible; pointer-events:auto; transition: opacity 220ms var(--ease-out), transform 260ms var(--ease-drawer), visibility 0s; }
+.sheet header{ display:flex; align-items:center; justify-content:space-between; padding:12px 10px 4px 18px; }
+.sheet h3{ margin:0; font:600 19px/1.2 var(--font-display); letter-spacing:-0.022em; }
 .gp-body{ overflow:auto; padding:4px 12px 14px; flex:1; }
 .gprow{ display:grid; grid-template-columns:auto 1fr auto auto; align-items:center; gap:6px; padding:5px 4px; border-radius:var(--radius-sm); }
 .gprow .tag{ grid-column:1 / -1; font:500 11px/1 var(--font-ui); color:var(--ink-faint); margin:2px 0 -2px 38px; }
@@ -354,7 +371,7 @@ body.dark #toast{ background:rgba(58,58,60,.97); }
 #toast.show{ opacity:1; transform:translate(-50%, 0); }
 
 #fileInput{ display:none; }
-body.present .bar:not(#topbar), body.present #symbols, body.present #graphPanel{ display:none; }
+body.present .bar:not(#topbar), body.present #symbols, body.present .sheet{ display:none; }
 
 @media (max-width: 1100px){
   #topbar{ flex-wrap:wrap; justify-content:center; width:max-content; max-width:calc(100vw - 16px); top:8px; }

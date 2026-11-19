@@ -26,7 +26,27 @@ En iPhone/iPad: Safari → Compartir → «Agregar a inicio».
 | F | Graficar, tipo GeoGebra |
 | T | Texto con barra de símbolos (π, √, ², ≤, ∞, θ, Σ, ∫, ℝ…) |
 | K | Puntero láser |
-| H / Espacio | Mover el lienzo |
+| H / Espacio / Esc | Mover el lienzo (Esc siempre vuelve a la mano) |
+
+## Tabletas gráficas y lápices digitales
+
+Funciona con Wacom, Huion, XP-Pen, Surface Pen, etc.: la presión cambia el grosor y la punta borradora borra.
+El botón lateral del lápiz mueve el lienzo. Todos los atajos están en Menú → **Atajos de teclado** (F1 o ?), en un panel a la derecha.
+
+Atajos de una tecla para asignar a los botones de la tableta (ExpressKeys):
+
+| Tecla | Acción |
+|---|---|
+| 1 … 9 | Elegir lápiz de la bandeja |
+| . y , | Lápiz siguiente / anterior |
+| + y − | Acercar / alejar donde está el lápiz |
+| 0 | Zoom 100 % |
+| E | Borrador |
+| Esc | Mano de mover |
+| Ctrl+Z / Ctrl+Y | Deshacer / rehacer |
+| AvPág / RePág | Página siguiente / anterior |
+
+Al cambiar de lápiz aparece un aviso con el lápiz activo, así no tienes que mirar la barra.
 
 ## Bandeja de lápices
 
