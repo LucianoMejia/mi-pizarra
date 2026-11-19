@@ -2,6 +2,18 @@
 
 Pizarra digital para dar clases, tutorías, explicar ideas, hacer lluvias de ideas o tomar notas a mano. Incluye herramientas especiales para matemáticas (planos cartesianos, gráficas tipo GeoGebra y símbolos), pero sirve para cualquier materia o tema. Es una página estática: abre `index.html` en Chrome o Edge (doble clic) o publícala en cualquier hosting estático.
 
+## Instalar como app (Windows, Mac, Linux, Android)
+
+Mi Pizarra es una app web instalable (PWA):
+
+1. Abre https://lucianomejia.github.io/mi-pizarra/ en **Chrome** o **Edge**.
+2. Menú ☰ → **Instalar Mi Pizarra como app**, o el ícono de instalar (⊕) en la barra de direcciones.
+3. Queda en el menú Inicio y la barra de tareas, abre en su propia ventana y **funciona sin internet**.
+
+Con la app instalada, los archivos `.pizarra` se pueden abrir con doble clic (en Windows: clic derecho → Abrir con → Mi Pizarra la primera vez).
+Las actualizaciones llegan solas al publicar una nueva versión en GitHub Pages.
+En iPhone/iPad: Safari → Compartir → «Agregar a inicio».
+
 ## Herramientas
 
 | Tecla | Herramienta |
@@ -77,3 +89,5 @@ Hecho por **José Luciano Mejía Arias** · [Instagram](https://instagram.com/lu
 - `index.html` — estructura
 - `styles.css` — tokens de color, sombras y movimiento (los mismos de mi-qr)
 - `script.js` — lienzo, herramientas, reconocimiento de figuras, exportación
+- `manifest.webmanifest`, `sw.js` — app instalable y modo sin conexión
+- `logo.svg`, `icon-*.png`, `favicon.ico` — íconos · `og-image.jpg` — vista previa al compartir el link

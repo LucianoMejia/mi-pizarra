@@ -43,6 +43,7 @@ const ICONS = {
   fountain: '<path d="m12 19 7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 7.6 7.6"/><circle cx="11" cy="11" r="2"/>',
   marker: '<path d="m9 11-6 6v3h3l6-6"/><path d="m14 4 6 6-6 6-6-6z"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/>',
+  install: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01"/>'
 };
 const ico = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
@@ -904,8 +905,7 @@ function loadText(text, path, quiet) {
   } catch (_) { if (!quiet) toast('No se pudo abrir: archivo no válido'); return false; }
 }
 function setTitle() {
-  const name = filePath || 'Sin título';
-  document.title = `${dirty && filePath ? '• ' : ''}${name} — Mi Pizarra`;
+  document.title = filePath ? `${dirty ? '• ' : ''}${filePath} — Mi Pizarra` : 'Mi Pizarra';
 }
 
 /* ---------- Puntero ---------- */
@@ -1881,6 +1881,7 @@ function buildMenu() {
     ['copy', 'Pegar imagen copiada', 'Ctrl+V', () => pasteFromClipboardAPI(true)], null,
     ['image', 'Exportar página como imagen (PNG)', '', exportPNG], ['pdf', 'Exportar todas las páginas a PDF', 'Ctrl+P', exportPDF], null,
     ['full', 'Pantalla completa', 'F11', toggleFull], ['present', 'Modo presentación (ocultar barras)', 'Tab', togglePresent], ['help', 'Atajos de teclado', 'F1', showHelp], null,
+    ...(isStandalone() ? [] : [['install', 'Instalar Mi Pizarra como app', '', installApp]]),
     ['info', 'Acerca de Mi Pizarra', '', openAbout]
   ];
   const m = $('#menuPop'); m.innerHTML = '<h4>Mi Pizarra</h4>';
@@ -1910,6 +1911,29 @@ function syncColorToBoard() {
   const other = Object.values(BOARDS).map((x) => x.ink);
   if (other.includes(S.color) && S.color !== b.ink) { S.color = b.ink; buildColors(); }
 }
+/* ---------- App instalable (PWA) ---------- */
+let installEvt = null;
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; });
+window.addEventListener('appinstalled', () => { installEvt = null; buildMenu(); toast('Mi Pizarra quedó instalada ✓'); });
+async function installApp() {
+  if (installEvt) { installEvt.prompt(); const r = await installEvt.userChoice; installEvt = null; if (r.outcome === 'accepted') buildMenu(); return; }
+  if (location.protocol === 'file:') { toast('Para instalarla abre la versión web: lucianomejia.github.io/mi-pizarra'); return; }
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/.test(ua)) toast('En iPhone/iPad: botón Compartir → «Agregar a inicio»');
+  else if (/Firefox/.test(ua)) toast('Firefox no instala apps web: abre esta página en Chrome o Edge');
+  else toast('Usa el ícono de instalar en la barra de direcciones (⊕) o menú ⋮ → Instalar Mi Pizarra');
+}
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+if ('launchQueue' in window) {
+  window.launchQueue.setConsumer(async (params) => {
+    if (!params.files || !params.files.length) return;
+    try { const h = params.files[0], f = await h.getFile(); if (loadText(await f.text(), f.name.replace(/\.(pizarra|json)$/i, ''))) fileHandle = h; } catch (_) { toast('No se pudo abrir el archivo'); }
+  });
+}
+
 function openAbout() { $('#modalBg').classList.add('show'); setTimeout(() => $('#aboutOk').focus(), 50); }
 function closeAbout() { $('#modalBg').classList.remove('show'); if (document.activeElement) document.activeElement.blur(); }
 $('#aboutOk').onclick = closeAbout;
