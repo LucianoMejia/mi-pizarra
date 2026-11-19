@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F5F5F7">
+<title>mi-pizarra</title>
+<link rel="icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<canvas id="bg"></canvas>
+<canvas id="ink"></canvas>
+<canvas id="ov"></canvas>
+<textarea id="editor" spellcheck="false"></textarea>
+
+
+
+<div id="topbar" class="bar">
+  <button class="ib" id="btnMenu" title="Menú"></button>
+  <button class="ib" id="btnBg" title="Fondo de la página"></button>
+  <div class="sep"></div>
+  <div id="tools" class="group"></div>
+  <div class="sep"></div>
+  <div id="colors" class="group"></div>
+  <div class="sep"></div>
+  <div id="widths" class="group"></div>
+  <button class="ib" id="btnAssist" title="Corrección de trazo"></button>
+  <div class="sep"></div>
+  <button class="ib" id="btnUndo" title="Deshacer (Ctrl+Z)"></button>
+  <button class="ib" id="btnRedo" title="Rehacer (Ctrl+Y)"></button>
+  <button class="ib" id="btnClear" title="Limpiar página"></button>
+</div>
+
+<div id="symbols" class="bar"></div>
+
+<div id="pagebar" class="bar">
+  <button class="ib" id="pgPrev" title="Página anterior (RePág)"></button>
+  <div id="pageLabel">1 / 1</div>
+  <button class="ib" id="pgNext" title="Página siguiente (AvPág)"></button>
+  <div class="sep"></div>
+  <button class="ib" id="pgAdd" title="Nueva página"></button>
+  <button class="ib" id="pgDup" title="Duplicar página"></button>
+  <button class="ib" id="pgDel" title="Eliminar página"></button>
+</div>
+
+<div id="zoombar" class="bar">
+  <button class="ib" id="zOut" title="Alejar (Ctrl -)"></button>
+  <button id="zoomLabel" title="Restablecer zoom (Ctrl 0)">100%</button>
+  <button class="ib" id="zIn" title="Acercar (Ctrl +)"></button>
+</div>
+
+<div id="menuPop" class="pop"></div>
+<div id="bgPop" class="pop"></div>
+<div id="shapePop" class="pop shapes"></div>
+<div id="assistPop" class="pop">
+  <h4>Corrección de trazo</h4>
+  <div class="row"><span>Mantener para corregir figura</span><label class="switch"><input type="checkbox" id="optShape" checked><span class="slider"></span></label></div>
+  <p class="note">Dibuja una línea, círculo, rectángulo o triángulo y deja el lápiz quieto al final: se convierte en una figura limpia. Si es una línea, puedes seguir moviendo para ajustarla.</p>
+  <hr>
+  <h4>Suavizar letra</h4>
+  <div class="row"><div class="seg" id="optSmooth"><button data-s="0">No</button><button data-s="1">Suave</button><button data-s="2">Medio</button><button data-s="3">Fuerte</button></div></div>
+  <p class="note">Estabiliza el trazo mientras escribes y quita el temblor de la mano.</p>
+</div>
+
+<div id="modalBg">
+  <div class="modal">
+    <h3>Plano cartesiano y funciones</h3>
+    <p class="hint">Escribe una función por fila. Ejemplos: <code>x^2 - 3</code> <code>2sin(x)</code> <code>sqrt(x)</code> <code>1/x</code> <code>abs(x-1)</code> <code>2^x</code> <code>ln(x)</code>. Puedes dejarlo vacío para un plano sin funciones.</p>
+    <div id="fxList"></div>
+    <button class="link" id="fxAdd">+ Agregar función</button>
+    <div class="opts">
+      <label><input type="checkbox" id="fxGrid" checked> Cuadrícula</label>
+      <label>Cada cuadro en x = <select id="fxKx"></select></label>
+      <label>en y = <select id="fxKy"></select></label>
+    </div>
+    <div class="err" id="fxErr"></div>
+    <div class="actions"><button id="fxCancel">Cancelar</button><button id="fxOk" class="primary">Listo</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<input type="file" id="fileInput" accept=".pizarra,.json">
+<script src="script.js"></script>
+</body>
+</html>
