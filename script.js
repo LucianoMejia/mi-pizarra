@@ -37,6 +37,7 @@ const ICONS = {
   full: '<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>',
   present: '<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
   wand: '<path d="m15 4 5 5L8 21l-5-5z"/><path d="m12 7 5 5"/><path d="M4 4l1 2M3 8h2M8 2v2"/>',
+  imgadd: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/><path d="M19 2v6M16 5h6"/>',
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01"/>'
 };
 const ico = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
@@ -341,6 +342,19 @@ function drawPlane(ctx, it) {
   ctx.restore();
 }
 
+const imgCache = new Map();
+function getImg(src) {
+  let im = imgCache.get(src);
+  if (!im) { im = new Image(); im.onload = () => { cacheValid = false; req(); }; im.src = src; imgCache.set(src, im); }
+  return im;
+}
+function drawImageItem(ctx, it) {
+  const x = Math.min(it.x1, it.x2), y = Math.min(it.y1, it.y2), w = Math.abs(it.x2 - it.x1), h = Math.abs(it.y2 - it.y1);
+  const im = getImg(it.src);
+  if (im.complete && im.naturalWidth) ctx.drawImage(im, x, y, w, h);
+  else { ctx.save(); ctx.fillStyle = 'rgba(118,118,128,.12)'; ctx.fillRect(x, y, w, h); ctx.restore(); }
+}
+function drawImages(ctx, p) { for (const it of p.items) if (it.t === 'image') drawImageItem(ctx, it); }
 const FONT = (size) => `${size}px "Segoe UI","Cambria Math",system-ui,sans-serif`;
 function drawText(ctx, it) {
   ctx.save(); ctx.fillStyle = it.c; ctx.font = FONT(it.size); ctx.textBaseline = 'top'; ctx.textAlign = 'left';
@@ -351,6 +365,7 @@ function drawText(ctx, it) {
 
 function drawItem(ctx, it) {
   switch (it.t) {
+    case 'image': return;
     case 'stroke': return drawStroke(ctx, it);
     case 'text': return drawText(ctx, it);
     case 'plane': return drawPlane(ctx, it);
@@ -421,7 +436,8 @@ function hit(it, x, y, r) {
 }
 function hitTest(x, y, r, type) {
   const items = P().items;
-  for (let i = items.length - 1; i >= 0; i--) { const it = items[i]; if (type && it.t !== type) continue; if (hit(it, x, y, r)) return it; }
+  for (let i = items.length - 1; i >= 0; i--) { const it = items[i]; if (it.t === 'image' || (type && it.t !== type)) continue; if (hit(it, x, y, r)) return it; }
+  if (!type || type === 'image') for (let i = items.length - 1; i >= 0; i--) { const it = items[i]; if (it.t === 'image' && hit(it, x, y, r)) return it; }
   return null;
 }
 function moveItem(it, dx, dy) {
@@ -436,6 +452,7 @@ function render() {
   raf = 0;
   const p = P(), v = view();
   drawBg(bgX, p, v, W, H, DPR);
+  bgX.setTransform(DPR * v.s, 0, 0, DPR * v.s, DPR * v.x, DPR * v.y); drawImages(bgX, p);
   inkX.setTransform(1, 0, 0, 1, 0, 0); inkX.clearRect(0, 0, inkC.width, inkC.height);
   if (useCache && cacheValid) inkX.drawImage(cacheC, 0, 0);
   else {
@@ -461,6 +478,8 @@ function drawOverlay() {
       const [ax, ay] = toScreen(b[0], b[1]), [bx, by] = toScreen(b[2], b[3]);
       ovX.strokeStyle = '#0071E3'; ovX.lineWidth = 1.5; ovX.setLineDash([6, 4]);
       ovX.strokeRect(ax - 6, ay - 6, bx - ax + 12, by - ay + 12); ovX.setLineDash([]);
+      const hd = imgHandle();
+      if (hd) { ovX.fillStyle = '#fff'; ovX.strokeStyle = '#0071E3'; ovX.lineWidth = 2; ovX.beginPath(); ovX.arc(hd[0], hd[1], 7, 0, Math.PI * 2); ovX.fill(); ovX.stroke(); }
     }
   }
   const fk = 1 - (performance.now() - flashT) / 350;
@@ -520,7 +539,11 @@ function changed() {
 function serialize() {
   return JSON.stringify({ app: 'pizarra-matematica', version: 1, cur, pages: doc.pages.map((p) => ({ bg: p.bg, board: p.board, view: p.view, items: p.items })) });
 }
-function autosave() { try { localStorage.setItem('mi-pizarra-autosave', serialize()); localStorage.setItem('mi-pizarra-name', filePath || ''); } catch (_) {} }
+let quotaWarned = false;
+function autosave() {
+  try { localStorage.setItem('mi-pizarra-autosave', serialize()); localStorage.setItem('mi-pizarra-name', filePath || ''); quotaWarned = false; }
+  catch (_) { if (!quotaWarned) { quotaWarned = true; toast('Las imágenes ocupan mucho para el autoguardado: guarda con Ctrl+S'); } }
+}
 function loadText(text, path, quiet) {
   try {
     const d = JSON.parse(text);
@@ -608,7 +631,10 @@ ovC.addEventListener('pointermove', (e) => {
     touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (act && act.type === 'pinch') { doPinch(); return; }
   }
-  if (!act) { if (S.tool === 'eraser' || S.tool === 'laser') req(); return; }
+  if (!act) {
+    if (S.tool === 'select') { const hd = imgHandle(); ovC.style.cursor = hd && Math.hypot(e.clientX - hd[0], e.clientY - hd[1]) < 14 ? 'nwse-resize' : 'default'; }
+    if (S.tool === 'eraser' || S.tool === 'laser') req(); return;
+  }
   const v = view();
   if (act.type === 'pan') {
     if (e.pointerId !== act.id) return;
@@ -648,6 +674,11 @@ ovC.addEventListener('pointermove', (e) => {
     }
     case 'laser': for (const ev of evs) { const [x, y] = toWorld(ev.clientX, ev.clientY); laser.push({ x, y, t: performance.now() }); } break;
     case 'marquee': act.x2 = wx; act.y2 = wy; break;
+    case 'resize': {
+      if (!act.moved) { snap(); act.moved = true; }
+      const it = act.it, w = Math.max(20 / v.s, wx - it.x1);
+      it.x2 = r2(it.x1 + w); it.y2 = r2(it.y1 + w * act.ratio); break;
+    }
     case 'move': {
       const dx = wx - act.lx, dy = wy - act.ly;
       if (!act.moved) { if (Math.hypot(dx, dy) * v.s < 2) return; snap(); act.moved = true; }
@@ -689,7 +720,7 @@ function endPointer(e) {
       const found = P().items.filter((it) => { if (it.er) return false; const b = bbox(it); return b[0] <= r[2] && b[2] >= r[0] && b[1] <= r[3] && b[3] >= r[1]; });
       S.sel = a.add ? [...new Set([...S.sel, ...found])] : found; break;
     }
-    case 'move': if (a.moved) changed(); break;
+    case 'move': case 'resize': if (a.moved) changed(); break;
   }
   req();
 }
@@ -724,6 +755,7 @@ function constrain(it, x, y) {
 function eraseAt(x, y) {
   const items = P().items, r = WIDTHS.eraser.v / 2 / view().s;
   for (let i = items.length - 1; i >= 0; i--) {
+    if (items[i].t === 'image') continue;
     if (hit(items[i], x, y, r)) {
       if (!act.did) { snap(); act.did = true; }
       const [it] = items.splice(i, 1); S.sel = S.sel.filter((s) => s !== it); cacheValid = false;
@@ -744,8 +776,19 @@ function finishShape(a, e) {
   snap(); P().items.push(it); changed();
 }
 
+function imgHandle() {
+  if (S.sel.length !== 1 || S.sel[0].t !== 'image') return null;
+  const it = S.sel[0]; return toScreen(Math.max(it.x1, it.x2), Math.max(it.y1, it.y2));
+}
 function selectDown(e, wx, wy) {
   const v = view(), pad = 8 / v.s;
+  const hd = imgHandle();
+  if (hd && Math.hypot(e.clientX - hd[0], e.clientY - hd[1]) < 14) {
+    const it = S.sel[0];
+    act = { type: 'resize', id: e.pointerId, it, ratio: Math.abs(it.y2 - it.y1) / Math.abs(it.x2 - it.x1), moved: false };
+    it.x2 = Math.max(it.x1, it.x2); it.x1 = Math.min(it.x1, it.x2); it.y2 = Math.max(it.y1, it.y2); it.y1 = Math.min(it.y1, it.y2);
+    return;
+  }
   const b = S.sel.length ? unionBox(S.sel) : null;
   if (b && !e.shiftKey && wx >= b[0] - pad && wx <= b[2] + pad && wy >= b[1] - pad && wy <= b[3] + pad) {
     act = { type: 'move', id: e.pointerId, lx: wx, ly: wy, moved: false }; return;
@@ -956,6 +999,58 @@ $('#fxOk').onclick = fxOk;
 $('#fxCancel').onclick = closeModal;
 $('#modalBg').addEventListener('pointerdown', (e) => { if (e.target.id === 'modalBg') closeModal(); });
 
+/* ---------- Imágenes ---------- */
+const MAX_IMG = 1800;
+function fileToDataURL(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      let w = im.naturalWidth, h = im.naturalHeight; const k = Math.min(1, MAX_IMG / Math.max(w, h)); w = Math.round(w * k); h = Math.round(h * k);
+      const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(im, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      const png = /png|gif|webp|svg/.test(file.type);
+      res({ src: c.toDataURL(png ? 'image/png' : 'image/jpeg', 0.9), w, h });
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('img')); };
+    im.src = url;
+  });
+}
+async function insertImages(files, at) {
+  files = [...files].filter((f) => f && f.type && f.type.startsWith('image/'));
+  if (!files.length) return false;
+  commitEditor();
+  const v = view(); const added = [];
+  let [cx, cy] = at || toWorld(W / 2, H / 2);
+  for (const f of files) {
+    try {
+      const { src, w, h } = await fileToDataURL(f);
+      const k = Math.min(1, (W * 0.6) / w, (H * 0.6) / h) / v.s, ww = w * k, hh = h * k;
+      added.push({ t: 'image', src, x1: r2(cx - ww / 2), y1: r2(cy - hh / 2), x2: r2(cx + ww / 2), y2: r2(cy + hh / 2) });
+      cx += 24 / v.s; cy += 24 / v.s;
+    } catch (_) { toast('No se pudo leer la imagen'); }
+  }
+  if (!added.length) return true;
+  snap(); P().items.push(...added);
+  setTool('select'); S.sel = added; changed();
+  toast(added.length > 1 ? `${added.length} imágenes insertadas` : 'Imagen insertada · arrastra la esquina para cambiar el tamaño');
+  return true;
+}
+const imgInput = document.createElement('input'); imgInput.type = 'file'; imgInput.accept = 'image/*'; imgInput.multiple = true; imgInput.hidden = true;
+document.body.appendChild(imgInput);
+imgInput.addEventListener('change', () => { insertImages(imgInput.files); imgInput.value = ''; });
+window.addEventListener('paste', (e) => {
+  if ($('#modalBg').classList.contains('show')) return;
+  const t = e.target;
+  const files = [...(e.clipboardData ? e.clipboardData.files : [])].filter((f) => f.type.startsWith('image/'));
+  if (files.length) {
+    e.preventDefault();
+    insertImages(files, hover && !edState ? toWorld(hover[0], hover[1]) : null);
+    return;
+  }
+  if (t === ed || (t.tagName === 'INPUT' && t.type === 'text')) return;
+  e.preventDefault(); paste();
+});
+
 /* ---------- Páginas ---------- */
 function afterPageChange() { syncColorToBoard(); S.sel = []; live = null; act = null; cacheValid = false; updatePageUI(); updateHistoryUI(); updateZoomUI(); updateBgPop(); setTitle(); req(); }
 function goPage(i) { commitEditor(); const n = clamp(i, 0, doc.pages.length - 1); if (n === cur) return; cur = n; syncColorToBoard(); afterPageChange(); autosave(); }
@@ -986,6 +1081,7 @@ function renderPageCanvas(p, scale = 2) {
   const x1 = c1.getContext('2d'), x2 = c2.getContext('2d');
   const v = { x: -b[0] * sc, y: -b[1] * sc, s: sc };
   drawBg(x1, p, v, cw, ch, 1);
+  x1.setTransform(sc, 0, 0, sc, v.x, v.y); drawImages(x1, p);
   x2.setTransform(sc, 0, 0, sc, v.x, v.y);
   for (const it of p.items) drawItem(x2, it);
   x1.setTransform(1, 0, 0, 1, 0, 0); x1.drawImage(c2, 0, 0);
@@ -1197,6 +1293,7 @@ function buildMenu() {
   const items = [
     ['file', 'Nueva pizarra', '', newDoc], ['open', 'Abrir…', 'Ctrl+O', openFile], ['save', 'Guardar', 'Ctrl+S', () => save(false)],
     ['save', 'Guardar como…', 'Ctrl+Mayús+S', () => save(true)], null,
+    ['imgadd', 'Insertar imagen…', 'Ctrl+V', () => imgInput.click()], null,
     ['image', 'Exportar página como imagen (PNG)', '', exportPNG], ['pdf', 'Exportar todas las páginas a PDF', 'Ctrl+P', exportPDF], null,
     ['full', 'Pantalla completa', 'F11', toggleFull], ['present', 'Modo presentación (ocultar barras)', 'Tab', togglePresent], ['help', 'Atajos de teclado', 'F1', showHelp]
   ];
@@ -1246,7 +1343,8 @@ function showHelp() {
     'Lápiz: dibuja una línea o figura y deja el lápiz quieto al final para corregirla',
     'Lápiz digital: la presión cambia el grosor; el botón borrador del lápiz borra.',
     '', 'Ctrl+S Guardar   Ctrl+O Abrir   Ctrl+P Exportar PDF   F11 Pantalla completa   Tab Ocultar barras',
-    'También puedes arrastrar un archivo .pizarra a la ventana para abrirlo.'
+    'También puedes arrastrar un archivo .pizarra a la ventana para abrirlo.',
+    'Imágenes: Ctrl+V para pegar, o arrástralas a la ventana. Con Seleccionar, arrastra la esquina para cambiar el tamaño.'
   ].join('\n'));
 }
 
@@ -1270,7 +1368,7 @@ window.addEventListener('keydown', (e) => {
     const map = {
       z: () => (e.shiftKey ? redo() : undo()), y: redo, s: () => save(e.shiftKey), o: openFile, p: exportPDF,
       d: () => { if (S.sel.length) { clipboard = JSON.stringify(S.sel); paste(20); } },
-      c: copySel, x: () => { copySel(); deleteSel(); }, v: () => paste(),
+      c: copySel, x: () => { copySel(); deleteSel(); },
       a: () => { setTool('select'); S.sel = P().items.filter((i) => !i.er); req(); },
       '0': () => { const v = view(); zoomAt(1 / v.s, W / 2, H / 2); },
       '=': () => zoomAt(1.2, W / 2, H / 2), '+': () => zoomAt(1.2, W / 2, H / 2), '-': () => zoomAt(1 / 1.2, W / 2, H / 2)
@@ -1296,7 +1394,7 @@ window.addEventListener('keyup', (e) => { if (e.key === ' ') { spaceDown = false
 window.addEventListener('resize', resize);
 window.addEventListener('beforeunload', autosave);
 window.addEventListener('dragover', (e) => e.preventDefault());
-window.addEventListener('drop', async (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && /\.(pizarra|json)$/i.test(f.name)) { fileHandle = null; loadText(await f.text(), f.name.replace(/\.(pizarra|json)$/i, '')); } });
+window.addEventListener('drop', async (e) => { e.preventDefault(); if (await insertImages(e.dataTransfer.files, toWorld(e.clientX, e.clientY))) return; const f = e.dataTransfer.files[0]; if (f && /\.(pizarra|json)$/i.test(f.name)) { fileHandle = null; loadText(await f.text(), f.name.replace(/\.(pizarra|json)$/i, '')); } });
 
 /* ---------- Arranque ---------- */
 function wire() {
