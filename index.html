@@ -19,10 +19,10 @@
 <meta name="apple-mobile-web-app-title" content="Mi Pizarra">
 <link rel="manifest" href="manifest.webmanifest">
 <title>Mi Pizarra</title>
-<link rel="icon" href="logo.svg?v=1.2.8" type="image/svg+xml">
-<link rel="alternate icon" href="favicon.ico?v=1.2.8">
-<link rel="apple-touch-icon" href="icon-180.png?v=1.2.8">
-<link rel="stylesheet" href="styles.css?v=1.2.8">
+<link rel="icon" href="logo.svg?v=1.3.0" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico?v=1.3.0">
+<link rel="apple-touch-icon" href="icon-180.png?v=1.3.0">
+<link rel="stylesheet" href="styles.css?v=1.3.0">
 </head>
 <body>
 <canvas id="bg"></canvas>
@@ -30,7 +30,7 @@
 <canvas id="ov"></canvas>
 <textarea id="editor" spellcheck="false"></textarea>
 
-<div id="brand"><img src="logo.svg?v=1.2.8" alt="" width="28" height="28"><span>Mi Pizarra</span></div>
+<div id="brand"><img src="logo.svg?v=1.3.0" alt="" width="28" height="28"><span>Mi Pizarra</span></div>
 
 <div id="topbar" class="bar">
   <button class="ib" id="btnMenu" title="Menú"></button>
@@ -38,6 +38,7 @@
   <div class="sep"></div>
   <div id="tools" class="group"></div>
   <div class="sep"></div>
+  <button class="ib" id="btnIns" title="Regla, transportador, compás, cortina y foco"></button>
   <button class="ib" id="btnStyle" title="Color y grosor"></button>
   <button class="ib" id="btnAssist" title="Corrección de trazo y letra"></button>
   <div class="sep"></div>
@@ -46,7 +47,19 @@
   <button class="ib" id="btnClear" title="Limpiar página"></button>
 </div>
 
+<div id="curtain" hidden><div class="ct-handle" title="Arrastra para revelar"><span class="grip"></span><span class="ct-txt">Arrastra hacia abajo para revelar</span><button id="ctClose" title="Quitar cortina" aria-label="Quitar cortina"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div></div>
+<div id="spot" hidden></div>
+
 <div id="symbols" class="bar"></div>
+
+<div id="selbar" class="bar" hidden>
+  <button class="ib" id="sbLock"></button>
+  <div class="sep"></div>
+  <button class="ib" id="sbDup" title="Duplicar (Ctrl+D)"></button>
+  <button class="ib" id="sbFront" title="Traer al frente"></button>
+  <button class="ib" id="sbBack" title="Enviar atrás"></button>
+  <button class="ib" id="sbDel" title="Eliminar (Supr)"></button>
+</div>
 
 <div id="pagebar" class="bar">
   <button class="ib" id="pgPrev" title="Página anterior (RePág)"></button>
@@ -85,6 +98,7 @@
     <button class="item danger" id="presetDel"></button>
   </div>
 </div>
+<div id="insPop" class="pop"></div>
 <div id="assistPop" class="pop">
   <h4>Corrección de trazo</h4>
   <div class="row"><span>Mantener para corregir figura</span><label class="switch"><input type="checkbox" id="optShape" checked><span class="slider"></span></label></div>
@@ -93,6 +107,15 @@
   <h4>Letra bonita</h4>
   <div class="row"><div class="seg" id="optSmooth"><button data-s="0">No</button><button data-s="1">Suave</button><button data-s="2">Medio</button><button data-s="3">Fuerte</button></div></div>
   <p class="note">Estabiliza la mano mientras escribes y pule el trazo al soltar. Los bolígrafos y la pluma además afinan las puntas y varían el grosor según la velocidad, como tinta real.</p>
+</div>
+
+<div id="mathPop" class="mathpop" role="dialog" aria-label="Fórmula">
+  <div class="mx-head"><h4>Fórmula</h4><span class="mx-hint">Escribe en LaTeX o usa los botones · Enter para insertar</span></div>
+  <div id="mxPreview" class="mx-preview empty">Vista previa</div>
+  <div class="mx-err" id="mxErr"></div>
+  <textarea id="mxInput" rows="2" spellcheck="false" placeholder="\frac{-b \pm \sqrt{b^2-4ac}}{2a}"></textarea>
+  <div id="mxTpl" class="mx-tpl"></div>
+  <div class="mx-actions"><button id="mxCancel">Cancelar</button><button id="mxOk" class="primary">Insertar</button></div>
 </div>
 
 <aside id="graphPanel" class="sheet" aria-label="Gráfica">
@@ -146,6 +169,8 @@
         <div class="krow"><span class="kk"><kbd>P</kbd><kbd>M</kbd></span><span>Último bolígrafo / resaltador</span></div>
         <div class="krow"><span class="kk"><kbd>E</kbd></span><span>Borrador</span></div>
         <div class="krow"><span class="kk"><kbd>T</kbd></span><span>Texto y símbolos</span></div>
+        <div class="krow"><span class="kk"><kbd>Q</kbd></span><span>Fórmula (LaTeX)</span></div>
+        <div class="krow"><span class="kk"><kbd>C</kbd></span><span>Compás</span></div>
         <div class="krow"><span class="kk"><kbd>L</kbd><kbd>A</kbd><kbd>R</kbd><kbd>O</kbd><kbd>Y</kbd></span><span>Línea, flecha, rectángulo, elipse, triángulo</span></div>
         <div class="krow"><span class="kk"><kbd>G</kbd><kbd>F</kbd></span><span>Plano cartesiano / gráfica</span></div>
         <div class="krow"><span class="kk"><kbd>K</kbd></span><span>Puntero láser</span></div>
@@ -169,6 +194,7 @@
         <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>C</kbd><kbd>V</kbd></span><span>Copiar / pegar (también imágenes)</span></div>
         <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>D</kbd></span><span>Duplicar selección</span></div>
         <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>A</kbd></span><span>Seleccionar todo</span></div>
+        <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>L</kbd></span><span>Bloquear / desbloquear selección</span></div>
         <div class="krow"><span class="kk"><kbd>←</kbd><kbd>→</kbd><kbd>↑</kbd><kbd>↓</kbd></span><span>Mover selección (con Mayús, más rápido)</span></div>
     </section>
     <section class="kgroup">
@@ -182,6 +208,8 @@
       <h4>Trucos</h4>
       <p>✏️ Dibuja una figura y <b>deja el lápiz quieto</b> al final para que quede perfecta.</p>
       <p>📐 Mantén <kbd>Mayús</kbd> al usar figuras para líneas rectas y figuras cuadradas.</p>
+      <p>📏 Con la regla puesta, dibuja pegado a su borde y la línea sale recta. Gírala con el botón azul o con la rueda del mouse.</p>
+      <p>📄 Arrastra un PDF a la ventana para abrir cada hoja como una página y escribir encima.</p>
       <p>🖊️ Con lápiz digital: la presión cambia el grosor, la punta borradora borra y el botón lateral mueve el lienzo.</p>
       <p>🎛️ ¿Tienes tableta? Asigna estas teclas a sus botones para cambiar de lápiz o hacer zoom sin el teclado.</p>
     </section>
@@ -190,9 +218,9 @@
 
 <div id="modalBg">
   <div class="modal about">
-    <img src="logo.svg?v=1.2.8" alt="" width="72" height="72">
+    <img src="logo.svg?v=1.3.0" alt="" width="72" height="72">
     <h3>Mi Pizarra</h3>
-    <p class="ver">Versión 1.2.8<br>Tu pizarra digital para clases, tutorías e ideas</p>
+    <p class="ver">Versión 1.3.0<br>Tu pizarra digital para clases, tutorías e ideas</p>
     <p>Hecho por <strong>José Luciano Mejía Arias</strong></p>
     <div class="socials">
       <a class="ig" href="https://instagram.com/lucianomejia17" target="_blank" rel="noopener"><span class="badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.8"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/></svg></span>Instagram</a>
@@ -220,6 +248,6 @@
 
 <div id="toast"></div>
 <input type="file" id="fileInput" accept=".pizarra,.json">
-<script src="script.js?v=1.2.8"></script>
+<script src="script.js?v=1.3.0"></script>
 </body>
 </html>

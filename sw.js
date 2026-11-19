@@ -1,8 +1,8 @@
 /* Mi Pizarra — service worker: funciona sin internet y se actualiza solo. */
-const VERSION = 'mi-pizarra-v1.2.8';
+const VERSION = 'mi-pizarra-v1.3.0';
 const SHELL = [
-  './', './index.html', './styles.css?v=1.2.8', './script.js?v=1.2.8', './logo.svg?v=1.2.8',
-  './favicon.ico?v=1.2.8', './icon-180.png?v=1.2.8', './icon-192.png', './icon-512.png', './manifest.webmanifest'
+  './', './index.html', './styles.css?v=1.3.0', './script.js?v=1.3.0', './logo.svg?v=1.3.0',
+  './favicon.ico?v=1.3.0', './icon-180.png?v=1.3.0', './icon-192.png', './icon-512.png', './manifest.webmanifest'
 ];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

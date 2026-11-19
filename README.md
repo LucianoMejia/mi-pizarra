@@ -25,6 +25,8 @@ En iPhone/iPad: Safari → Compartir → «Agregar a inicio».
 | G | Plano cartesiano |
 | F | Graficar, tipo GeoGebra |
 | T | Texto con barra de símbolos (π, √, ², ≤, ∞, θ, Σ, ∫, ℝ…) |
+| Q | Fórmula (LaTeX) |
+| C | Compás |
 | K | Puntero láser |
 | H / Espacio / Esc | Mover el lienzo (Esc siempre vuelve a la mano) |
 
@@ -54,6 +56,30 @@ Vienen 7 lápices listos: bolígrafo negro, azul y rojo, pluma caligráfica, mar
 - Toca un lápiz para usarlo; **tócalo otra vez** para cambiar su tipo (Bolígrafo, Pluma, Marcador, Lápiz, Resaltador), color y grosor.
 - **+** agrega un lápiz nuevo (hasta 12). Desde su menú puedes duplicarlo o eliminarlo.
 - La bandeja se recuerda entre sesiones.
+
+## Fórmulas
+
+Herramienta **Fórmula (Q)**: haz clic donde quieras y escribe en LaTeX, por ejemplo `\frac{-b \pm \sqrt{b^2-4ac}}{2a}`, o usa los botones (fracción, raíz, potencia, Σ, ∫, límite, matriz, sistema…). Se ve como en un libro, se adapta al color de la pizarra y sale en PNG/PDF. Doble clic para editarla.
+
+## Instrumentos y presentación
+
+Botón de la regla en la barra:
+- **Regla**: arrástrala para moverla y gírala con el botón azul o la rueda (Mayús = de 15° en 15°). Dibuja con cualquier lápiz pegado a uno de sus bordes y la línea sale perfectamente recta.
+- **Transportador**: se mueve y gira igual; escala de 0° a 180° en ambos sentidos.
+- **Compás (C)**: presiona en el centro, abre hasta el radio y gira para trazar el arco. Si sueltas sin girar, dibuja el círculo completo.
+- **Cortina**: tapa la página y la arrastras hacia abajo para ir revelando.
+- **Foco**: oscurece todo menos un círculo que sigue al puntero (tamaño S, M o L).
+
+## Bloquear elementos
+
+Con Seleccionar (V) toca un elemento: arriba aparece una barra con **Bloquear**, Duplicar, Traer al frente, Enviar atrás y Eliminar (también **Ctrl+L**).
+Arrastra cualquiera de las cuatro esquinas de la selección para cambiarle el tamaño: trazos, fórmulas, textos, figuras, imágenes o varios elementos a la vez se escalan manteniendo su proporción (el grosor de los trazos también).
+Lo bloqueado no se mueve, no se borra y queda debajo de la tinta (la goma no lo toca). Las imágenes y las gráficas también van siempre debajo de la tinta.
+
+## PDFs
+
+- **Menú → Abrir PDF como páginas…** o arrastra el PDF a la ventana: cada hoja se convierte en una página, ya bloqueada, para escribir encima.
+- **Menú → Exportar esta página a PDF** guarda solo la página actual; **Exportar todas las páginas a PDF** (Ctrl+P) guarda la clase completa.
 
 ## Gráficas (tipo GeoGebra)
 
@@ -118,3 +144,4 @@ Hecho por **José Luciano Mejía Arias** · [Instagram](https://instagram.com/lu
 - `script.js` — lienzo, herramientas, reconocimiento de figuras, exportación
 - `manifest.webmanifest`, `sw.js` — app instalable y modo sin conexión
 - `logo.svg`, `icon-*.png`, `favicon.ico` — íconos · `og-image.jpg` — vista previa al compartir el link
+- `vendor/mathjax` (fórmulas) y `vendor/pdfjs` (PDFs) — librerías incluidas para que funcione sin internet; se cargan solo cuando se usan

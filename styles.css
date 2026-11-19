@@ -370,6 +370,60 @@ body.dark .socials .gh .badge{ background:#F5F5F7; color:#111; }
 body.dark #toast{ background:rgba(58,58,60,.97); }
 #toast.show{ opacity:1; transform:translate(-50%, 0); }
 
+/* ---------- Editor de fórmulas ---------- */
+.mathpop{
+  position:absolute; z-index:22; top:72px; left:50%; width:min(560px, calc(100vw - 24px));
+  background:var(--material-strong); -webkit-backdrop-filter:saturate(180%) blur(20px); backdrop-filter:saturate(180%) blur(20px);
+  border-radius:var(--radius-lg); box-shadow:var(--shadow-pop); padding:14px 14px 12px;
+  opacity:0; visibility:hidden; transform:translate(-50%, -6px) scale(0.98); pointer-events:none;
+  transition: opacity 180ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s linear 200ms;
+  user-select:text;
+}
+.mathpop.show{ opacity:1; visibility:visible; transform:translate(-50%, 0); pointer-events:auto; transition: opacity 180ms var(--ease-out), transform 200ms var(--ease-out), visibility 0s; }
+.mx-head{ display:flex; align-items:baseline; gap:10px; margin:0 4px 8px; }
+.mx-head h4{ margin:0; font:600 17px/1.2 var(--font-display); letter-spacing:-0.02em; }
+.mx-hint{ font-size:12px; color:var(--ink-faint); }
+.mx-preview{ min-height:64px; max-height:200px; overflow:auto; display:grid; place-items:center; padding:10px; border-radius:var(--radius-md); background:var(--panel); color:var(--ink); font-size:20px; }
+.mx-preview.empty{ color:var(--ink-faint); font-size:13px; }
+.mx-err{ color:var(--danger); font-size:12px; min-height:16px; margin:4px 4px 2px; }
+#mxInput{ width:100%; resize:vertical; min-height:44px; border:0; border-radius:var(--radius-sm); background:var(--fill); color:var(--ink); padding:10px 12px; font:14px/1.45 var(--font-mono); outline:none; transition: box-shadow 160ms var(--ease-out); }
+#mxInput:focus{ box-shadow:0 0 0 4px var(--focus); }
+.mx-tpl{ display:grid; grid-template-columns:repeat(12, 1fr); gap:3px; margin:10px 0 6px; }
+.mx-tpl button{ height:32px; border-radius:7px; font:500 14px/1 "Cambria Math","Segoe UI Symbol",var(--font-ui); color:var(--ink); transition: background-color 120ms var(--ease-out), transform 120ms var(--ease-out); }
+.mx-tpl button:active{ transform:scale(0.94); }
+@media (hover:hover) and (pointer:fine){ .mx-tpl button:hover{ background:var(--fill); } }
+.mx-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+.mx-actions button{ height:36px; padding:0 18px; border-radius:980px; font:500 14px/1 var(--font-ui); background:var(--fill); transition: transform 160ms var(--ease-out); }
+.mx-actions button:active{ transform:scale(0.97); }
+.mx-actions .primary{ background:var(--accent); color:#fff; }
+@media (max-width: 640px){ .mx-tpl{ grid-template-columns:repeat(8, 1fr); } }
+
+/* ---------- Cortina y foco ---------- */
+#curtain{
+  position:absolute; left:0; right:0; bottom:0; top:120px; z-index:6;
+  background: var(--ct-bg, #fff);
+  background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.035) 0 2px, transparent 2px 48px);
+  box-shadow: 0 -10px 30px -6px rgba(0,0,0,.35);
+}
+.ct-handle{
+  position:relative; height:46px; display:flex; align-items:center; justify-content:center; gap:12px; cursor:ns-resize; touch-action:none;
+  background:var(--material-strong); -webkit-backdrop-filter:saturate(180%) blur(20px); backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:.5px solid var(--separator); color:var(--ink-soft); font:500 13px/1 var(--font-ui);
+}
+.ct-handle .grip{ width:44px; height:5px; border-radius:3px; background:var(--fill-strong); }
+.ct-handle button{ position:absolute; right:10px; top:7px; width:32px; height:32px; border-radius:50%; display:grid; place-items:center; color:var(--ink-faint); transition: background-color 160ms var(--ease-out), transform 160ms var(--ease-out); }
+.ct-handle button svg{ width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; }
+.ct-handle button:active{ transform:scale(0.92); }
+@media (hover:hover) and (pointer:fine){ .ct-handle button:hover{ background:var(--fill); } }
+#spot{ position:absolute; inset:0; z-index:6; pointer-events:none;
+  background: radial-gradient(circle at var(--sx, 50%) var(--sy, 50%), transparent 0, transparent var(--sr, 150px), rgba(0,0,0,.78) calc(var(--sr, 150px) + 1.5px)); }
+#insPop{ width:280px; }
+
+/* ---------- Barra de selección ---------- */
+#selbar{ z-index:12; }
+#selbar .ib{ width:36px; height:36px; }
+body.present #selbar{ display:none; }
+
 /* ---------- Aviso de novedades ---------- */
 .wn{
   position:absolute; right:14px; bottom:calc(70px + env(safe-area-inset-bottom,0px)); z-index:25;
