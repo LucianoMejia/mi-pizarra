@@ -73,6 +73,7 @@ Elige **F**, arrastra un recuadro y escribe en el panel lateral:
 - Pasa el mouse sobre una curva para leer el punto exacto.
 - Con el panel abierto: arrastra dentro de la gráfica para moverla y usa la rueda para hacer zoom. También puedes elegir cuánto vale cada cuadro en x y en y.
 - Doble clic sobre una gráfica (con Seleccionar) para volver a editarla.
+- Con Seleccionar, arrastra cualquiera de sus cuatro esquinas para cambiarle el tamaño; los ejes no se mueven (Mayús la hace cuadrada).
 
 ## Corrección de trazo (botón de varita)
 
@@ -84,7 +85,7 @@ Elige **F**, arrastra un recuadro y escribe en el panel lateral:
 
 - **Ctrl+V** pega una imagen copiada (captura de pantalla, foto, ejercicio de un PDF…). También puedes arrastrar imágenes a la ventana o usar Menú → Insertar imagen.
 - Las imágenes quedan **debajo de la tinta**: puedes escribir y borrar encima sin dañarlas.
-- Con Seleccionar (V): arrastra para mover, usa el punto azul de la esquina para cambiar el tamaño y Supr para eliminarla.
+- Con Seleccionar (V): arrastra para mover, usa cualquiera de las cuatro esquinas para cambiar el tamaño y Supr para eliminarla.
 
 ## Archivo
 
@@ -98,7 +99,7 @@ Otros atajos: Ctrl+Z / Ctrl+Y, Supr, Ctrl+C / V / D, Ctrl+A, AvPág / RePág, Ct
 
 - **Ctrl+V** pega una imagen copiada (captura de pantalla, foto, ejercicio de un PDF…). También puedes arrastrar imágenes a la ventana o usar Menú → Insertar imagen.
 - Las imágenes quedan **debajo de la tinta**: puedes escribir y borrar encima sin dañarlas.
-- Con Seleccionar (V): arrastra para mover, usa el punto azul de la esquina para cambiar el tamaño y Supr para eliminarla.
+- Con Seleccionar (V): arrastra para mover, usa cualquiera de las cuatro esquinas para cambiar el tamaño y Supr para eliminarla.
 
 ## Publicar una versión nueva
 

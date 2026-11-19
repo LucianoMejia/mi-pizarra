@@ -847,8 +847,7 @@ function drawOverlay() {
       const [ax, ay] = toScreen(b[0], b[1]), [bx, by] = toScreen(b[2], b[3]);
       ovX.strokeStyle = '#0071E3'; ovX.lineWidth = 1.5; ovX.setLineDash([6, 4]);
       ovX.strokeRect(ax - 6, ay - 6, bx - ax + 12, by - ay + 12); ovX.setLineDash([]);
-      const hd = imgHandle();
-      if (hd) { ovX.fillStyle = '#fff'; ovX.strokeStyle = '#0071E3'; ovX.lineWidth = 2; ovX.beginPath(); ovX.arc(hd[0], hd[1], 7, 0, Math.PI * 2); ovX.fill(); ovX.stroke(); }
+      for (const hd of resizeHandles()) { ovX.fillStyle = '#fff'; ovX.strokeStyle = '#0071E3'; ovX.lineWidth = 2; ovX.beginPath(); ovX.arc(hd.sx, hd.sy, 6.5, 0, Math.PI * 2); ovX.fill(); ovX.stroke(); }
     }
   }
   if (gp.it && P().items.includes(gp.it)) {
@@ -1025,7 +1024,7 @@ ovC.addEventListener('pointermove', (e) => {
   }
   if (!act) {
     drawOverlay();
-    if (S.tool === 'select') { const hd = imgHandle(); ovC.style.cursor = hd && Math.hypot(e.clientX - hd[0], e.clientY - hd[1]) < 14 ? 'nwse-resize' : 'default'; }
+    if (S.tool === 'select') { const hd = handleAt(e.clientX, e.clientY); ovC.style.cursor = hd ? (hd.c === 'nw' || hd.c === 'se' ? 'nwse-resize' : 'nesw-resize') : 'default'; }
     if (S.tool === 'laser') req(); return;
   }
   const v = view();
@@ -1074,8 +1073,24 @@ ovC.addEventListener('pointermove', (e) => {
     case 'marquee': act.x2 = wx; act.y2 = wy; break;
     case 'resize': {
       if (!act.moved) { snap(); act.moved = true; }
-      const it = act.it, w = Math.max(20 / v.s, wx - it.x1);
-      it.x2 = r2(it.x1 + w); it.y2 = r2(it.y1 + w * act.ratio); break;
+      const it = act.it, sx = act.c.includes('w') ? -1 : 1, sy = act.c.includes('n') ? -1 : 1;
+      if (it.t === 'plane') {
+        // Recuadro libre, ajustado a la cuadrícula; el origen de los ejes no se mueve.
+        let nx = Math.round(wx / GRID) * GRID, ny = Math.round(wy / GRID) * GRID;
+        const minS = GRID * 3;
+        if ((nx - act.ax) * sx < minS) nx = act.ax + sx * minS;
+        if ((ny - act.ay) * sy < minS) ny = act.ay + sy * minS;
+        if (e.shiftKey) { const d = Math.max(Math.abs(nx - act.ax), Math.abs(ny - act.ay)); nx = act.ax + sx * d; ny = act.ay + sy * d; }
+        it.x1 = Math.min(act.ax, nx); it.x2 = Math.max(act.ax, nx); it.y1 = Math.min(act.ay, ny); it.y2 = Math.max(act.ay, ny);
+        const g = planeGeom({ ...it, ox: 0, oy: 0 }), u = g.u;
+        it.ox = +((act.origin[0] - g.ox) / u).toFixed(4); it.oy = +((act.origin[1] - g.oy) / u).toFixed(4);
+      } else {
+        // Imagen: mantiene la proporción, crece desde la esquina opuesta.
+        const w = Math.max(20 / v.s, Math.abs(wx - act.ax), Math.abs(wy - act.ay) / act.ratio), h = w * act.ratio;
+        const nx = act.ax + sx * w, ny = act.ay + sy * h;
+        it.x1 = r2(Math.min(act.ax, nx)); it.x2 = r2(Math.max(act.ax, nx)); it.y1 = r2(Math.min(act.ay, ny)); it.y2 = r2(Math.max(act.ay, ny));
+      }
+      cacheValid = false; break;
     }
     case 'move': {
       const dx = wx - act.lx, dy = wy - act.ly;
@@ -1180,17 +1195,23 @@ function finishShape(a, e) {
   snap(); P().items.push(it); changed();
 }
 
-function imgHandle() {
-  if (S.sel.length !== 1 || S.sel[0].t !== 'image') return null;
-  const it = S.sel[0]; return toScreen(Math.max(it.x1, it.x2), Math.max(it.y1, it.y2));
+/* Manijas para cambiar el tamaño de imágenes y gráficas (una sola selección). */
+const RESIZABLE = ['image', 'plane'];
+function resizeHandles() {
+  if (S.sel.length !== 1 || !RESIZABLE.includes(S.sel[0].t)) return [];
+  const it = S.sel[0], l = Math.min(it.x1, it.x2), r = Math.max(it.x1, it.x2), t = Math.min(it.y1, it.y2), b = Math.max(it.y1, it.y2);
+  return [['nw', l, t], ['ne', r, t], ['sw', l, b], ['se', r, b]].map(([c, x, y]) => { const [sx, sy] = toScreen(x, y); return { c, sx, sy }; });
 }
+const handleAt = (cx, cy) => resizeHandles().find((h) => Math.hypot(cx - h.sx, cy - h.sy) < 14) || null;
 function selectDown(e, wx, wy) {
   const v = view(), pad = 8 / v.s;
-  const hd = imgHandle();
-  if (hd && Math.hypot(e.clientX - hd[0], e.clientY - hd[1]) < 14) {
+  const hd = handleAt(e.clientX, e.clientY);
+  if (hd) {
     const it = S.sel[0];
-    act = { type: 'resize', id: e.pointerId, it, ratio: Math.abs(it.y2 - it.y1) / Math.abs(it.x2 - it.x1), moved: false };
-    it.x2 = Math.max(it.x1, it.x2); it.x1 = Math.min(it.x1, it.x2); it.y2 = Math.max(it.y1, it.y2); it.y1 = Math.min(it.y1, it.y2);
+    const l = Math.min(it.x1, it.x2), r = Math.max(it.x1, it.x2), t = Math.min(it.y1, it.y2), b = Math.max(it.y1, it.y2);
+    const ax = hd.c.includes('w') ? r : l, ay = hd.c.includes('n') ? b : t;
+    const g = it.t === 'plane' ? planeGeom(it) : null;
+    act = { type: 'resize', id: e.pointerId, it, c: hd.c, ax, ay, ratio: (b - t) / Math.max(1e-6, r - l), moved: false, origin: g ? [g.ox, g.oy] : null };
     return;
   }
   const b = S.sel.length ? unionBox(S.sel) : null;
@@ -2090,15 +2111,11 @@ function wire() {
 
 
 /* ---------- Novedades de la versión (aparece una vez por versión) ---------- */
-const APP_VERSION = '1.2.7';
+const APP_VERSION = '1.2.8';
 const CHANGELOG = [
-  ['🆕', 'Este aviso: cada vez que salga una versión nueva verás aquí qué cambió.'],
-  ['🎨', 'Lo escrito en negro ahora se ve en tiza blanca en las pizarras verde y oscura, y los colores se aclaran para leerse mejor.'],
-  ['📈', 'Gráficas: moverte por la pizarra ya no deja rastros, al elegir otra herramienta se cierra el panel y puedes mover la gráfica completa con Seleccionar.'],
-  ['✨', 'Regiones sombreadas más limpias y sin puntos repetidos cuando dos curvas coinciden.'],
-  ['💾', 'Ctrl+S, Ctrl+O y Ctrl+P funcionan también mientras escribes en el panel de gráfica.'],
-  ['⌨️', 'Atajos de teclado en un panel lateral (F1 o ?), y Esc te devuelve a la mano de mover.'],
-  ['🧹', 'El borrador de trazo completo ya no borra gráficas ni imágenes.']
+  ['↔️', 'Cambia el tamaño de las gráficas: selecciónala con Seleccionar (V) y arrastra cualquiera de sus cuatro esquinas.'],
+  ['📐', 'Al agrandar o achicar una gráfica, los ejes se quedan en su lugar y solo ves más o menos del plano; se ajusta a la cuadrícula (Mayús para hacerla cuadrada).'],
+  ['🖼️', 'Las imágenes ahora también se pueden redimensionar desde cualquier esquina, manteniendo su proporción.']
 ];
 function initWhatsNew() {
   let seen = null, returning = false;
