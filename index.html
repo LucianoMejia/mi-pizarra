@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#F5F5F7">
 <meta name="description" content="Pizarra digital gratis para clases, tutorías e ideas: lápices y resaltadores, corrección de trazo, gráficas tipo GeoGebra, imágenes y exportar a PDF. Se puede instalar como app.">
 <meta property="og:type" content="website">
@@ -19,10 +19,10 @@
 <meta name="apple-mobile-web-app-title" content="Mi Pizarra">
 <link rel="manifest" href="manifest.webmanifest">
 <title>Mi Pizarra</title>
-<link rel="icon" href="logo.svg?v=1.3.0" type="image/svg+xml">
-<link rel="alternate icon" href="favicon.ico?v=1.3.0">
-<link rel="apple-touch-icon" href="icon-180.png?v=1.3.0">
-<link rel="stylesheet" href="styles.css?v=1.3.0">
+<link rel="icon" href="logo.svg?v=1.4.0" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico?v=1.4.0">
+<link rel="apple-touch-icon" href="icon-180.png?v=1.4.0">
+<link rel="stylesheet" href="styles.css?v=1.4.0">
 </head>
 <body>
 <canvas id="bg"></canvas>
@@ -30,7 +30,7 @@
 <canvas id="ov"></canvas>
 <textarea id="editor" spellcheck="false"></textarea>
 
-<div id="brand"><img src="logo.svg?v=1.3.0" alt="" width="28" height="28"><span>Mi Pizarra</span></div>
+<div id="brand"><img src="logo.svg?v=1.4.0" alt="" width="28" height="28"><span>Mi Pizarra</span></div>
 
 <div id="topbar" class="bar">
   <button class="ib" id="btnMenu" title="Menú"></button>
@@ -204,6 +204,13 @@
         <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>O</kbd></span><span>Abrir</span></div>
         <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>P</kbd></span><span>Exportar a PDF</span></div>
     </section>
+    <section class="kgroup">
+      <h4>Pantalla táctil</h4>
+        <div class="krow"><span class="kk">1 dedo</span><span>Dibuja o usa la herramienta activa</span></div>
+        <div class="krow"><span class="kk">2 dedos</span><span>Mover y hacer zoom (pellizcar)</span></div>
+        <div class="krow"><span class="kk">Doble toque</span><span>Editar una fórmula o una gráfica</span></div>
+        <div class="krow"><span class="kk">Lápiz digital</span><span>Al usarlo, los dedos solo mueven la pizarra</span></div>
+    </section>
     <section class="kgroup tips">
       <h4>Trucos</h4>
       <p>✏️ Dibuja una figura y <b>deja el lápiz quieto</b> al final para que quede perfecta.</p>
@@ -218,9 +225,9 @@
 
 <div id="modalBg">
   <div class="modal about">
-    <img src="logo.svg?v=1.3.0" alt="" width="72" height="72">
+    <img src="logo.svg?v=1.4.0" alt="" width="72" height="72">
     <h3>Mi Pizarra</h3>
-    <p class="ver">Versión 1.3.0<br>Tu pizarra digital para clases, tutorías e ideas</p>
+    <p class="ver">Versión 1.4.0<br>Tu pizarra digital para clases, tutorías e ideas</p>
     <p>Hecho por <strong>José Luciano Mejía Arias</strong></p>
     <div class="socials">
       <a class="ig" href="https://instagram.com/lucianomejia17" target="_blank" rel="noopener"><span class="badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.8"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/></svg></span>Instagram</a>
@@ -248,6 +255,6 @@
 
 <div id="toast"></div>
 <input type="file" id="fileInput" accept=".pizarra,.json">
-<script src="script.js?v=1.3.0"></script>
+<script src="script.js?v=1.4.0"></script>
 </body>
 </html>

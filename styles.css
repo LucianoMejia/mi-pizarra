@@ -42,7 +42,8 @@ body{
   font: 400 15px/1.47 var(--font-ui); letter-spacing:-0.009em;
   -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
   -webkit-tap-highlight-color:transparent;
-  user-select:none; -webkit-user-select:none;
+  user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+  overscroll-behavior:none; touch-action:manipulation;
   color-scheme:light;
 }
 body.dark{
@@ -467,4 +468,60 @@ body.present .bar:not(#topbar), body.present #symbols, body.present .sheet{ disp
 @media (max-width: 1100px){
   #topbar{ flex-wrap:wrap; justify-content:center; width:max-content; max-width:calc(100vw - 16px); top:8px; }
   #symbols{ top:116px; }
+}
+
+/* =====================================================================
+   Celulares (vertical y horizontal): barra abajo al alcance del pulgar
+   ===================================================================== */
+@media (max-width: 760px), (max-height: 500px) and (pointer: coarse){
+  #brand, #zoombar{ display:none !important; }
+  #topbar{
+    top:auto; bottom:calc(8px + env(safe-area-inset-bottom,0px)); left:8px; right:8px; transform:none;
+    width:auto; max-width:none; flex-wrap:nowrap; justify-content:flex-start;
+    overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
+    border-radius:16px; padding:4px;
+  }
+  #topbar::-webkit-scrollbar{ display:none; }
+  #topbar > *, #tools > *, #presets > *{ flex:none; }
+  #topbar .ib, #tools .ib{ width:42px; height:42px; }
+  #btnUndo{ order:-3; } #btnRedo{ order:-2; margin-right:4px; }
+  #btnRedo::after{ content:""; position:absolute; right:-5px; top:9px; bottom:9px; width:1px; background:var(--separator); }
+  /* sombra que indica que hay más herramientas a la derecha */
+  #topbar.more{ -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+
+  #pagebar{ top:calc(8px + env(safe-area-inset-top,0px)); bottom:auto; padding:3px; }
+  #pagebar .ib{ width:36px; height:36px; }
+  #pageLabel{ min-width:58px; font-size:13px; }
+  #symbols{ top:calc(58px + env(safe-area-inset-top,0px)); left:8px; right:8px; transform:none; max-width:none; flex-wrap:nowrap; justify-content:flex-start; overflow-x:auto; scrollbar-width:none; }
+  #symbols::-webkit-scrollbar{ display:none; }
+  #symbols button{ flex:none; }
+
+  .pop{ max-width:calc(100vw - 16px); max-height:calc(100vh - 120px); overflow:auto; }
+  #stylePop, #insPop, #assistPop{ width:min(300px, calc(100vw - 16px)); }
+
+  .sheet{
+    top:auto; left:8px; right:8px; bottom:calc(64px + env(safe-area-inset-bottom,0px)); width:auto;
+    max-height:min(62vh, 560px); border-radius:18px;
+    transform:translateY(16px);
+  }
+  .sheet.show{ transform:none; }
+  #keysPanel{ width:auto; }
+  .krow{ grid-template-columns:104px 1fr; }
+
+  .mathpop{ top:calc(8px + env(safe-area-inset-top,0px)); width:calc(100vw - 16px); padding:12px 10px 10px; }
+  .mx-tpl{ grid-template-columns:repeat(9, 1fr); }
+  .mx-hint{ display:none; }
+
+  .wn{ right:8px; left:8px; width:auto; bottom:calc(66px + env(safe-area-inset-bottom,0px)); }
+  #toast{ bottom:calc(74px + env(safe-area-inset-bottom,0px)); max-width:calc(100vw - 32px); text-align:center; }
+  .ct-handle .ct-txt{ font-size:12px; }
+
+  /* iOS no hace zoom al escribir si el texto mide al menos 16 px */
+  input[type=text], input[type=number], textarea#mxInput, select{ font-size:16px !important; }
+}
+@media (pointer: coarse){ #menuPop kbd{ display:none; } }
+/* Horizontal en celular: barras más bajas */
+@media (max-height: 500px) and (pointer: coarse){
+  #topbar .ib, #tools .ib{ width:38px; height:38px; }
+  .sheet{ max-height:calc(100vh - 80px); bottom:calc(58px + env(safe-area-inset-bottom,0px)); }
 }

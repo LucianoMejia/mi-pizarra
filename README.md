@@ -30,6 +30,14 @@ En iPhone/iPad: Safari → Compartir → «Agregar a inicio».
 | K | Puntero láser |
 | H / Espacio / Esc | Mover el lienzo (Esc siempre vuelve a la mano) |
 
+## En el celular
+
+- La barra de herramientas va **abajo**; deslízala de lado para ver todas. Deshacer y rehacer están al inicio.
+- Las páginas van arriba. El zoom se hace **pellizcando con dos dedos**, que también sirven para moverte.
+- **Doble toque** sobre una fórmula o una gráfica para editarla.
+- Los paneles suben desde abajo y los menús se abren hacia arriba cuando no caben.
+- Se puede instalar como app: en Android, Chrome → menú ⋮ → Instalar; en iPhone, Safari → Compartir → «Agregar a inicio».
+
 ## Tabletas gráficas y lápices digitales
 
 Funciona con Wacom, Huion, XP-Pen, Surface Pen, etc.: la presión cambia el grosor y la punta borradora borra.

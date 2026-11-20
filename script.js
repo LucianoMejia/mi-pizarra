@@ -876,7 +876,7 @@ function drawOverlay() {
       const lk = S.sel.some((i) => i.locked);
       ovX.strokeStyle = lk ? 'rgba(142,142,147,.95)' : '#0071E3'; ovX.lineWidth = 1.5; ovX.setLineDash([6, 4]);
       ovX.strokeRect(ax - 6, ay - 6, bx - ax + 12, by - ay + 12); ovX.setLineDash([]);
-      for (const hd of resizeHandles()) { ovX.fillStyle = '#fff'; ovX.strokeStyle = '#0071E3'; ovX.lineWidth = 2; ovX.beginPath(); ovX.arc(hd.sx, hd.sy, 6.5, 0, Math.PI * 2); ovX.fill(); ovX.stroke(); }
+      for (const hd of resizeHandles()) { ovX.fillStyle = '#fff'; ovX.strokeStyle = '#0071E3'; ovX.lineWidth = 2; ovX.beginPath(); ovX.arc(hd.sx, hd.sy, lastPtr === 'mouse' ? 6.5 : 9, 0, Math.PI * 2); ovX.fill(); ovX.stroke(); }
     }
   }
   if (gp.it && P().items.includes(gp.it)) {
@@ -992,6 +992,7 @@ function doPinch() {
 }
 
 ovC.addEventListener('pointerdown', (e) => {
+  lastPtr = e.pointerType || 'mouse';
   closePops();
   if (mx.st) { commitMath(); if (S.tool === 'math') { e.preventDefault(); return; } }
   if (edState) { commitEditor(); if (S.tool === 'text') { e.preventDefault(); return; } }
@@ -1012,6 +1013,7 @@ ovC.addEventListener('pointerdown', (e) => {
   const tool = penEraser ? 'eraser' : S.tool;
   const v = view(); const [wx, wy] = toWorld(e.clientX, e.clientY);
   const id = e.pointerId;
+  if (trackTap(e) && onDouble(e.clientX, e.clientY)) return;
   const ih = insHit(wx, wy);
   if (ih) { insStart(e, wx, wy, ih); return; }
   if (gp.it && (tool === 'func' || tool === 'plane') && P().items.includes(gp.it) && inPlane(gp.it, wx, wy)) {
@@ -1213,14 +1215,23 @@ ovC.addEventListener('pointerup', endPointer);
 ovC.addEventListener('pointercancel', endPointer);
 ovC.addEventListener('pointerleave', () => { if (!act) { hover = null; req(); } });
 ovC.addEventListener('contextmenu', (e) => e.preventDefault());
-ovC.addEventListener('dblclick', (e) => {
-  if (S.tool !== 'select' && S.tool !== 'func' && S.tool !== 'plane' && S.tool !== 'math') return;
-  const [wx, wy] = toWorld(e.clientX, e.clientY);
+ovC.addEventListener('dblclick', (e) => onDouble(e.clientX, e.clientY));
+let lastTap = { t: 0, x: 0, y: 0 };
+function trackTap(e) {
+  if (e.pointerType === 'mouse') return false;
+  const now = performance.now(), dbl = now - lastTap.t < 320 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30;
+  lastTap = dbl ? { t: 0, x: 0, y: 0 } : { t: now, x: e.clientX, y: e.clientY };
+  return dbl;
+}
+function onDouble(cx, cy) {
+  if (S.tool !== 'select' && S.tool !== 'func' && S.tool !== 'plane' && S.tool !== 'math') return false;
+  const [wx, wy] = toWorld(cx, cy);
   const mth = hitTest(wx, wy, 4 / view().s, 'math');
-  if (mth && !mth.locked) { act = null; openMathEditor({ item: mth }); return; }
+  if (mth && !mth.locked) { act = null; openMathEditor({ item: mth }); return true; }
   const it = hitTest(wx, wy, 4 / view().s, 'plane');
-  if (it) { act = null; openGraphPanel(it, false); }
-});
+  if (it) { act = null; openGraphPanel(it, false); return true; }
+  return false;
+}
 let gpWheel = 0;
 ovC.addEventListener('wheel', (e) => {
   e.preventDefault();
@@ -1298,7 +1309,8 @@ function resizeHandles() {
   const [l, t, r, b] = bx;
   return [['nw', l, t], ['ne', r, t], ['sw', l, b], ['se', r, b]].map(([c, x, y]) => { const [sx, sy] = toScreen(x, y); return { c, sx, sy }; });
 }
-const handleAt = (cx, cy) => resizeHandles().find((h) => Math.hypot(cx - h.sx, cy - h.sy) < 14) || null;
+let lastPtr = 'mouse';
+const handleAt = (cx, cy) => resizeHandles().find((h) => Math.hypot(cx - h.sx, cy - h.sy) < (lastPtr === 'mouse' ? 14 : 26)) || null;
 function selectDown(e, wx, wy) {
   const v = view(), pad = 8 / v.s;
   const hd = handleAt(e.clientX, e.clientY);
@@ -1901,9 +1913,10 @@ function drawCompassGuide(ctx) {
 
 /* ---------- Cortina y foco ---------- */
 const CL = { curtain: false, spot: false, spotR: 150, cy: 120 };
+const isPhone = () => matchMedia('(max-width: 760px), (max-height: 500px) and (pointer: coarse)').matches;
 function setCurtain(on) {
   CL.curtain = on; const c = $('#curtain'); c.hidden = !on;
-  if (on) { CL.cy = 120; c.style.top = CL.cy + 'px'; paintCurtain(); }
+  if (on) { CL.cy = isPhone() ? 64 : 120; c.style.top = CL.cy + 'px'; paintCurtain(); }
   buildInsPop();
 }
 function paintCurtain() { const b = BOARDS[P().board] || BOARDS.white; $('#curtain').style.setProperty('--ct-bg', b.bg); }
@@ -2250,7 +2263,7 @@ function buildPresets() {
     const th = p.k === 'hl' ? 6 : clamp(Math.round(p.w * 0.6), 2, 5);
     b.innerHTML = ico(KINDS[p.k].icon) + `<i class="tip" style="height:${th}px;background:${inkColor(p.c)}"></i>`;
     b.onclick = () => {
-      if (S.tool === 'pen' && S.pi === i) { togglePop('#stylePop', b); buildStyle(); return; }
+      if (S.tool === 'pen' && S.pi === i) { buildStyle(); togglePop('#stylePop', b); return; }
       S.pi = i; if (p.k === 'hl') S.lastHl = i; else S.lastPen = i; savePresets(); setTool('pen');
     };
     box.appendChild(b);
@@ -2306,7 +2319,7 @@ function buildStyle() {
 }
 $('#presetDup').onclick = () => { if (S.presets.length >= 12) { toast('Máximo 12 lápices'); return; } S.presets.splice(S.pi + 1, 0, { ...curPreset() }); S.pi++; savePresets(); buildPresets(); buildStyle(); };
 $('#presetDel').onclick = () => { if (S.presets.length <= 1) return; S.presets.splice(S.pi, 1); S.pi = Math.max(0, S.pi - 1); savePresets(); closePops(); setTool('pen'); toast('Lápiz eliminado'); };
-$('#btnStyle').onclick = (e) => { togglePop('#stylePop', e.currentTarget); buildStyle(); };
+$('#btnStyle').onclick = (e) => { buildStyle(); togglePop('#stylePop', e.currentTarget); };
 function buildColors() {
   const box = $('#colors'), c = toolColor();
   const inPal = PALETTE.includes(c.toLowerCase());
@@ -2377,8 +2390,10 @@ function closePops() { document.querySelectorAll('.pop.show').forEach((p) => p.c
 function togglePop(sel, anchor) {
   const p = $(sel), open = p.classList.contains('show'); closePops(); if (open) return;
   p.classList.add('show');
-  const r = anchor.getBoundingClientRect();
-  p.style.top = r.bottom + 8 + 'px';
+  const r = anchor.getBoundingClientRect(), ph = p.offsetHeight, vh = window.innerHeight;
+  const below = vh - r.bottom - 8, above = r.top - 8;
+  let top = below >= ph + 8 || below >= above ? r.bottom + 8 : r.top - ph - 8;
+  p.style.top = clamp(top, 8, Math.max(8, vh - ph - 8)) + 'px';
   p.style.left = clamp(r.left, 8, window.innerWidth - p.offsetWidth - 8) + 'px';
 }
 document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.pop') && !e.target.closest('#btnMenu,#btnBg,#btnAssist,#btnStyle,#btnIns,.preset,[data-tool=shapes]')) closePops(); });
@@ -2399,7 +2414,7 @@ function buildMenu() {
   for (const it of items) {
     if (!it) { m.appendChild(document.createElement('hr')); continue; }
     const b = document.createElement('button'); b.className = 'item';
-    b.innerHTML = `${ico(it[0])}<span>${it[1]}</span><kbd>${it[2]}</kbd>`;
+    b.innerHTML = `${ico(it[0])}<span>${it[1]}</span>${it[2] ? `<kbd>${it[2]}</kbd>` : ''}`;
     b.onclick = () => { closePops(); it[3](); }; m.appendChild(b);
   }
 }
@@ -2607,16 +2622,13 @@ function wire() {
 
 
 /* ---------- Novedades de la versión (aparece una vez por versión) ---------- */
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 const CHANGELOG = [
-  ['Σ', 'Fórmulas bonitas: herramienta Fórmula (Q) con vista previa y botones para fracciones, raíces, integrales, matrices y más.'],
-  ['📏', 'Regla y transportador que se mueven y giran; dibuja pegado al borde de la regla y la línea sale recta.'],
-  ['🧭', 'Compás (C): marca el centro, abre el radio y gira para trazar arcos o círculos.'],
-  ['🎭', 'Cortina para ir revelando la página y foco que ilumina solo donde está el puntero.'],
-  ['🔒', 'Bloquear elementos: selecciona y usa el candado (Ctrl+L); no se mueven, no se borran y quedan debajo de la tinta.'],
-  ['📄', 'Abre un PDF y cada hoja se vuelve una página para escribir encima (Menú o arrastrándolo a la ventana).'],
-  ['🖨️', 'Exporta solo la página actual a PDF, además de todas las páginas.'],
-  ['↔️', 'Cambia el tamaño de cualquier cosa: trazos, fórmulas, textos, figuras o varios elementos juntos, desde las cuatro esquinas.']
+  ['📱', 'Mi Pizarra ahora funciona en celulares: la barra de herramientas va abajo, al alcance del pulgar, y se desliza de lado para ver todo.'],
+  ['✌️', 'Dibuja con un dedo; usa dos dedos para moverte y pellizca para hacer zoom.'],
+  ['👆', 'Doble toque sobre una fórmula o una gráfica para editarla.'],
+  ['🧾', 'Los paneles de gráficas y atajos suben desde abajo como hojas, y los menús se abren hacia arriba cuando no caben.'],
+  ['🎯', 'Puntos para redimensionar más grandes al usar el dedo, y sin zoom accidental del navegador.']
 ];
 function initWhatsNew() {
   let seen = null, returning = false;
@@ -2661,6 +2673,8 @@ async function init() {
   buildAssist();
   syncColorToBoard(); setTool('pen'); afterPageChange();
   initWhatsNew();
+  try { if (isPhone() && !localStorage.getItem('mi-pizarra-hint-dock')) { localStorage.setItem('mi-pizarra-hint-dock', '1'); setTimeout(() => toast('Desliza la barra de abajo para ver todas las herramientas'), 900); } } catch (_) {}
+  { const tb = $('#topbar'); const on = () => tb.classList.toggle('more', tb.scrollWidth - tb.clientWidth - tb.scrollLeft > 8); tb.addEventListener('scroll', on, { passive: true }); window.addEventListener('resize', on); setTimeout(on, 50); }
 }
 init();
 })();
