@@ -284,6 +284,9 @@ body.dark .socials .gh .badge{ background:#F5F5F7; color:#111; }
 .widths input[type="range"]{ flex:1; min-width:90px; }
 .widths .seg{ margin:6px 4px 2px; }
 .pop .item.danger{ color:var(--danger); }
+.widths.opacity{ padding:0 10px 8px; }
+.widths.opacity input[type="range"]{ flex:1; background:linear-gradient(90deg, var(--fill), var(--ink-soft)); }
+#opVal{ font:500 12px/1 var(--font-ui); color:var(--ink-soft); min-width:36px; text-align:right; font-variant-numeric:tabular-nums; }
 
 /* ---------- Panel de atajos ---------- */
 #keysPanel{ width:min(380px, calc(100vw - 24px)); }

@@ -21,7 +21,7 @@ En iPhone/iPad: Safari → Compartir → «Agregar a inicio».
 | V | Seleccionar y mover |
 | S | Selección libre: dibuja un lazo alrededor de lo que quieres seleccionar |
 | 1…9 | Lápices de la bandeja (P = último bolígrafo, M = último resaltador) |
-| E | Borrador (modo Goma o Trazo completo) |
+| E | Borrador: Goma (corta lo que tocas) o Trazo completo |
 | L / A / R / O / Y | Línea, flecha, rectángulo, elipse, triángulo (Mayús = recto/cuadrado) |
 | G | Plano cartesiano |
 | F | Graficar, tipo GeoGebra |
@@ -53,7 +53,7 @@ Atajos de una tecla para asignar a los botones de la tableta (ExpressKeys):
 | + y − | Acercar / alejar donde está el lápiz |
 | 0 | Zoom 100 % |
 | Alt + / Alt − | Más / menos grosor del lápiz, borrador, figuras o texto |
-| Alt + rueda | Ajustar el grosor con el mouse |
+| Alt + clic derecho y arrastrar | Como Photoshop: ← → tamaño, ↑ ↓ opacidad (Mac: Ctrl + Option + arrastrar) |
 | E | Borrador |
 | Esc | Mano de mover |
 | Ctrl+Z / Ctrl+Y | Deshacer / rehacer |
@@ -66,6 +66,8 @@ Al cambiar de lápiz aparece un aviso con el lápiz activo, así no tienes que m
 Vienen 7 lápices listos: bolígrafo negro, azul y rojo, pluma caligráfica, marcador y dos resaltadores.
 - Toca un lápiz para usarlo; **tócalo otra vez** para cambiar su tipo (Bolígrafo, Pluma, Marcador, Lápiz, Resaltador), color y grosor.
 - **+** agrega un lápiz nuevo (hasta 12). Desde su menú puedes duplicarlo o eliminarlo.
+- Cada lápiz tiene también su **opacidad** (10–100 %). Las figuras, el texto y las fórmulas usan la opacidad del menú de estilo.
+- Al cambiar el grosor aparece una guía circular con el tamaño y color reales.
 - La bandeja se recuerda entre sesiones.
 
 ## Fórmulas
