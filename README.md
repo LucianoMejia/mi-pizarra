@@ -19,6 +19,7 @@ En iPhone/iPad: Safari → Compartir → «Agregar a inicio».
 | Tecla | Herramienta |
 |---|---|
 | V | Seleccionar y mover |
+| S | Selección libre: dibuja un lazo alrededor de lo que quieres seleccionar |
 | 1…9 | Lápices de la bandeja (P = último bolígrafo, M = último resaltador) |
 | E | Borrador (modo Goma o Trazo completo) |
 | L / A / R / O / Y | Línea, flecha, rectángulo, elipse, triángulo (Mayús = recto/cuadrado) |
@@ -77,6 +78,10 @@ Botón de la regla en la barra:
 - **Compás (C)**: presiona en el centro, abre hasta el radio y gira para trazar el arco. Si sueltas sin girar, dibuja el círculo completo.
 - **Cortina**: tapa la página y la arrastras hacia abajo para ir revelando.
 - **Foco**: oscurece todo menos un círculo que sigue al puntero (tamaño S, M o L).
+
+## Selección libre (lazo)
+
+Con **S** (o el botón del lazo, junto a Seleccionar) dibuja a mano alrededor de lo que quieras: se selecciona todo lo que quede dentro, aunque tenga cualquier forma. Sin cambiar de herramienta puedes arrastrar la selección, cambiarle el tamaño desde las esquinas o usar la barra (bloquear, duplicar, orden, eliminar). Mayús suma a la selección y un toque sin dibujar selecciona lo que está debajo.
 
 ## Bloquear elementos
 

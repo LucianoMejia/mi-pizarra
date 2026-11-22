@@ -55,6 +55,7 @@ const ICONS = {
   compass: '<circle cx="12" cy="5" r="2"/><path d="m11 7-5 14M13 7l5 14M8.5 15h7"/>',
   curtain: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 13h18"/><path d="M10 13v2h4v-2"/>',
   spot: '<circle cx="12" cy="12" r="3"/><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>',
+  lasso: '<path d="M7 22a5 5 0 0 1-2-4"/><path d="M3.3 14A6.8 6.8 0 0 1 2 10c0-4.4 4.5-8 10-8s10 3.6 10 8-4.5 8-10 8a12 12 0 0 1-5-1"/><path d="M5 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>',
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01"/>'
 };
 if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
@@ -902,6 +903,11 @@ function drawOverlay() {
     ovX.strokeStyle = `rgba(0,113,227,${0.45 * fk})`; ovX.lineWidth = 2;
     ovX.beginPath(); ovX.roundRect(ax - 8, ay - 8, bx - ax + 16, by - ay + 16, 10); ovX.stroke(); req();
   }
+  if (act && act.type === 'lasso' && act.pts.length > 1) {
+    ovX.beginPath(); act.pts.forEach(([x, y], i) => { const [sx, sy] = toScreen(x, y); if (i) ovX.lineTo(sx, sy); else ovX.moveTo(sx, sy); });
+    ovX.closePath(); ovX.fillStyle = 'rgba(0,113,227,.08)'; ovX.fill();
+    ovX.setLineDash([6, 5]); ovX.lineDashOffset = -(performance.now() / 40) % 11; ovX.strokeStyle = '#0071E3'; ovX.lineWidth = 1.6; ovX.stroke(); ovX.setLineDash([]);
+  }
   if (act && act.type === 'marquee') {
     const [ax, ay] = toScreen(act.x1, act.y1), [bx, by] = toScreen(act.x2, act.y2);
     ovX.fillStyle = 'rgba(0,113,227,.08)'; ovX.strokeStyle = '#0071E3'; ovX.lineWidth = 1;
@@ -1055,6 +1061,7 @@ ovC.addEventListener('pointerdown', (e) => {
     case 'compass': act = { type: 'compass', id, C: [wx, wy], P: [wx, wy], r: 0, a0: null, last: 0, sweep: 0, lockR: false }; useCache = true; cacheValid = false; break;
     case 'laser': act = { type: 'laser', id }; laserOn = true; laser.push({ x: wx, y: wy, t: performance.now() }); break;
     case 'select': selectDown(e, wx, wy); break;
+    case 'lasso': lassoDown(e, wx, wy); break;
   }
   req();
 });
@@ -1070,7 +1077,7 @@ ovC.addEventListener('pointermove', (e) => {
     drawOverlay();
     if (CL.spot) moveSpot(e.clientX, e.clientY);
     { const [hx, hy] = toWorld(e.clientX, e.clientY), ih = insHit(hx, hy); if (ih) { ovC.style.cursor = ih.part === 'rot' ? 'alias' : 'grab'; return; } else if (ovC.style.cursor === 'grab' && S.tool !== 'hand' && !spaceDown) setCursor(); }
-    if (S.tool === 'select') { const hd = handleAt(e.clientX, e.clientY); ovC.style.cursor = hd ? (hd.c === 'nw' || hd.c === 'se' ? 'nwse-resize' : 'nesw-resize') : 'default'; }
+    if (isSelTool(S.tool)) { const hd = handleAt(e.clientX, e.clientY); ovC.style.cursor = hd ? (hd.c === 'nw' || hd.c === 'se' ? 'nwse-resize' : 'nesw-resize') : 'default'; }
     if (S.tool === 'laser') req(); return;
   }
   const v = view();
@@ -1132,6 +1139,7 @@ ovC.addEventListener('pointermove', (e) => {
     }
     case 'laser': for (const ev of evs) { const [x, y] = toWorld(ev.clientX, ev.clientY); laser.push({ x, y, t: performance.now() }); } break;
     case 'marquee': act.x2 = wx; act.y2 = wy; break;
+    case 'lasso': for (const ev of evs) { const [x, y] = toWorld(ev.clientX, ev.clientY), l = act.pts[act.pts.length - 1]; if (Math.hypot(x - l[0], y - l[1]) * v.s > 2) act.pts.push([x, y]); } break;
     case 'resize': {
       if (!act.moved) { snap(); act.moved = true; }
       const it = act.it, sx = act.c.includes('w') ? -1 : 1, sy = act.c.includes('n') ? -1 : 1;
@@ -1208,6 +1216,7 @@ function endPointer(e) {
       S.sel = a.add ? [...new Set([...S.sel, ...found])] : found; break;
     }
     case 'move': case 'resize': if (a.moved) changed(); break;
+    case 'lasso': finishLasso(a); break;
   }
   req();
 }
@@ -1224,7 +1233,7 @@ function trackTap(e) {
   return dbl;
 }
 function onDouble(cx, cy) {
-  if (S.tool !== 'select' && S.tool !== 'func' && S.tool !== 'plane' && S.tool !== 'math') return false;
+  if (!isSelTool(S.tool) && S.tool !== 'func' && S.tool !== 'plane' && S.tool !== 'math') return false;
   const [wx, wy] = toWorld(cx, cy);
   const mth = hitTest(wx, wy, 4 / view().s, 'math');
   if (mth && !mth.locked) { act = null; openMathEditor({ item: mth }); return true; }
@@ -1304,13 +1313,57 @@ function scaledItem(o, ax, ay, f) {
   return n;
 }
 function resizeHandles() {
-  if (!S.sel.length || S.sel.some((i) => i.locked) || S.tool !== 'select') return [];
+  if (!S.sel.length || S.sel.some((i) => i.locked) || !isSelTool(S.tool)) return [];
   const bx = selBox(); if (!bx) return [];
   const [l, t, r, b] = bx;
   return [['nw', l, t], ['ne', r, t], ['sw', l, b], ['se', r, b]].map(([c, x, y]) => { const [sx, sy] = toScreen(x, y); return { c, sx, sy }; });
 }
 let lastPtr = 'mouse';
 const handleAt = (cx, cy) => resizeHandles().find((h) => Math.hypot(cx - h.sx, cy - h.sy) < (lastPtr === 'mouse' ? 14 : 26)) || null;
+const isSelTool = (t) => t === 'select' || t === 'lasso';
+/* Selección libre: dibuja un lazo alrededor de lo que quieres seleccionar */
+function lassoDown(e, wx, wy) {
+  const v = view(), pad = 8 / v.s;
+  if (S.sel.length && !e.shiftKey) {
+    if (handleAt(e.clientX, e.clientY)) { selectDown(e, wx, wy); return; }
+    const b = unionBox(S.sel);
+    if (b && !S.sel.some((i) => i.locked) && wx >= b[0] - pad && wx <= b[2] + pad && wy >= b[1] - pad && wy <= b[3] + pad) {
+      act = { type: 'move', id: e.pointerId, lx: wx, ly: wy, moved: false }; return;
+    }
+  }
+  if (!e.shiftKey) S.sel = [];
+  act = { type: 'lasso', id: e.pointerId, pts: [[wx, wy]], add: e.shiftKey };
+}
+function pointInPoly(x, y, L) {
+  let c = false;
+  for (let i = 0, j = L.length - 1; i < L.length; j = i++) {
+    const [xi, yi] = L[i], [xj, yj] = L[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+  }
+  return c;
+}
+function finishLasso(a) {
+  const L = a.pts, v = view();
+  let len = 0; for (let i = 1; i < L.length; i++) len += Math.hypot(L[i][0] - L[i - 1][0], L[i][1] - L[i - 1][1]);
+  if (L.length < 3 || len * v.s < 12) {
+    // Un toque sin dibujar: selecciona lo que está debajo, como Seleccionar.
+    const h = hitTest(L[0][0], L[0][1], 6 / v.s);
+    if (h) S.sel = a.add ? [...new Set([...S.sel, h])] : [h];
+    req(); return;
+  }
+  const found = P().items.filter((it) => {
+    if (it.er || it.locked) return false;
+    if (it.pts && it.pts.length) {
+      const step = Math.max(1, Math.floor(it.pts.length / 60)); let inside = 0, n = 0;
+      for (let i = 0; i < it.pts.length; i += step) { n++; if (pointInPoly(it.pts[i][0], it.pts[i][1], L)) inside++; }
+      return inside / n >= 0.5;
+    }
+    const b = bbox(it); return pointInPoly((b[0] + b[2]) / 2, (b[1] + b[3]) / 2, L);
+  });
+  S.sel = a.add ? [...new Set([...S.sel, ...found])] : found;
+  if (!found.length && !a.add) toast('No quedó nada dentro del lazo');
+  req();
+}
 function selectDown(e, wx, wy) {
   const v = view(), pad = 8 / v.s;
   const hd = handleAt(e.clientX, e.clientY);
@@ -2245,6 +2298,7 @@ function buildTools() {
     box.appendChild(b);
   };
   mk('select', 'Seleccionar y mover (V)');
+  mk('lasso', 'Selección libre (S): dibuja alrededor de lo que quieres seleccionar');
   const pbox = document.createElement('div'); pbox.id = 'presets'; pbox.className = 'group'; box.appendChild(pbox);
   const add = document.createElement('button'); add.className = 'ib add'; add.title = 'Agregar lápiz'; add.innerHTML = ico('plus');
   add.onclick = () => { const p = { ...curPreset() }; if (S.presets.length >= 12) { toast('Máximo 12 lápices'); return; } S.presets.push(p); S.pi = S.presets.length - 1; savePresets(); setTool('pen'); buildPresets(); toast('Lápiz agregado: tócalo de nuevo para configurarlo'); };
@@ -2275,7 +2329,7 @@ function setTool(t) {
   if (mx.st && t !== 'math') commitMath();
   if (SHAPES.some((s) => s[0] === t)) S.lastShape = t;
   S.tool = t; laserOn = false;
-  if (t !== 'select') S.sel = [];
+  if (!isSelTool(t)) S.sel = [];
   const shapesBtn = $('#tools [data-tool=shapes]');
   shapesBtn.innerHTML = ico(S.lastShape) + '<i class="caret"></i>';
   document.querySelectorAll('#tools > .ib').forEach((b) => b.classList.toggle('on', b.dataset.tool === t || (b.dataset.tool === 'shapes' && SHAPES.some((s) => s[0] === t))));
@@ -2492,7 +2546,7 @@ function selAction(kind) {
 }
 function updateSelBar() {
   const bar = $('#selbar');
-  if (S.tool !== 'select' || !S.sel.length || act || edState) { bar.hidden = true; return; }
+  if (!isSelTool(S.tool) || !S.sel.length || act || edState) { bar.hidden = true; return; }
   const b = unionBox(S.sel); if (!b) { bar.hidden = true; return; }
   const locked = S.sel.every((i) => i.locked), anyLocked = S.sel.some((i) => i.locked);
   const lb = $('#sbLock'); lb.innerHTML = ico(locked ? 'unlock' : 'lock'); lb.title = locked ? 'Desbloquear' : 'Bloquear (no se mueve ni se borra)'; lb.classList.toggle('on', locked);
@@ -2574,7 +2628,7 @@ window.addEventListener('keydown', (e) => {
     if (i >= 0) { S.pi = i; setTool('pen'); }
     return;
   }
-  const keys = { q: 'math', c: 'compass', e: 'eraser', v: 'select', l: 'line', a: 'arrow', r: 'rect', o: 'ellipse', y: 'triangle', g: 'plane', f: 'func', t: 'text', k: 'laser', h: 'hand' };
+  const keys = { s: 'lasso', q: 'math', c: 'compass', e: 'eraser', v: 'select', l: 'line', a: 'arrow', r: 'rect', o: 'ellipse', y: 'triangle', g: 'plane', f: 'func', t: 'text', k: 'laser', h: 'hand' };
   if (keys[k] && !e.altKey) setTool(keys[k]);
 });
 window.addEventListener('keyup', (e) => { if (e.key === ' ') { e.preventDefault(); spaceDown = false; setCursor(); } });
@@ -2622,13 +2676,11 @@ function wire() {
 
 
 /* ---------- Novedades de la versión (aparece una vez por versión) ---------- */
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 const CHANGELOG = [
-  ['📱', 'Mi Pizarra ahora funciona en celulares: la barra de herramientas va abajo, al alcance del pulgar, y se desliza de lado para ver todo.'],
-  ['✌️', 'Dibuja con un dedo; usa dos dedos para moverte y pellizca para hacer zoom.'],
-  ['👆', 'Doble toque sobre una fórmula o una gráfica para editarla.'],
-  ['🧾', 'Los paneles de gráficas y atajos suben desde abajo como hojas, y los menús se abren hacia arriba cuando no caben.'],
-  ['🎯', 'Puntos para redimensionar más grandes al usar el dedo, y sin zoom accidental del navegador.']
+  ['➰', 'Selección libre (S): dibuja un lazo alrededor de lo que quieres seleccionar, aunque tenga cualquier forma.'],
+  ['✋', 'Con el lazo puedes mover, cambiar el tamaño, bloquear o borrar lo seleccionado sin cambiar de herramienta.'],
+  ['➕', 'Mantén Mayús para sumar más cosas a la selección; un toque sin dibujar selecciona lo que está debajo.']
 ];
 function initWhatsNew() {
   let seen = null, returning = false;
