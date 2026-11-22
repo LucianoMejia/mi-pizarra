@@ -56,6 +56,7 @@ const ICONS = {
   curtain: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 13h18"/><path d="M10 13v2h4v-2"/>',
   spot: '<circle cx="12" cy="12" r="3"/><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>',
   lasso: '<path d="M7 22a5 5 0 0 1-2-4"/><path d="M3.3 14A6.8 6.8 0 0 1 2 10c0-4.4 4.5-8 10-8s10 3.6 10 8-4.5 8-10 8a12 12 0 0 1-5-1"/><path d="M5 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>',
+  sparkle: '<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01"/>'
 };
 if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
@@ -2476,6 +2477,7 @@ function buildMenu() {
     ['image', 'Exportar página como imagen (PNG)', '', exportPNG], ['pdf', 'Exportar esta página a PDF', '', () => exportPDF(true)], ['pdf', 'Exportar todas las páginas a PDF', 'Ctrl+P', () => exportPDF(false)], null,
     ['full', 'Pantalla completa', 'F11', toggleFull], ['present', 'Modo presentación (ocultar barras)', 'Tab', togglePresent], ['help', 'Atajos de teclado', 'F1', showHelp], null,
     ...(isStandalone() ? [] : [['install', 'Instalar Mi Pizarra como app', '', installApp]]),
+    ['sparkle', 'Novedades', '', openHistory],
     ['info', 'Acerca de Mi Pizarra', '', openAbout]
   ];
   const m = $('#menuPop'); m.innerHTML = '<h4>Mi Pizarra</h4>';
@@ -2694,38 +2696,97 @@ function wire() {
 }
 
 
-/* ---------- Novedades de la versión (aparece una vez por versión) ---------- */
-const APP_VERSION = '1.4.2';
-const CHANGELOG = [
-  ['⌨️', 'Alt + y Alt − cambian el grosor del lápiz, borrador, figuras o texto que tengas activo.'],
-  ['🖱️', 'Alt + rueda del mouse ajusta el grosor de forma continua; el círculo del borrador muestra el tamaño nuevo.'],
-  ['💬', 'Al cambiar el grosor aparece un aviso con el tamaño, por ejemplo «Borrador · 60».']
+/* ---------- Novedades: historial de versiones ----------
+   Para publicar una versión nueva, agrega un bloque ARRIBA de la lista (no borres los anteriores).
+   Quien se haya saltado versiones verá todas las novedades que se perdió. */
+const CHANGELOGS = [
+  { v: '1.4.2', items: [
+    ['⌨️', 'Alt + y Alt − cambian el grosor del lápiz, borrador, figuras o texto que tengas activo.'],
+    ['🖱️', 'Alt + rueda del mouse ajusta el grosor de forma continua; el círculo del borrador muestra el tamaño nuevo.'],
+    ['📜', 'Si te saltaste actualizaciones, ahora ves las novedades de todas; y en Menú → Novedades está el historial completo.']
+  ] },
+  { v: '1.4.1', items: [
+    ['➰', 'Selección libre (S): dibuja un lazo alrededor de lo que quieres seleccionar, aunque tenga cualquier forma.'],
+    ['✋', 'Con el lazo puedes mover, cambiar el tamaño, bloquear o borrar lo seleccionado sin cambiar de herramienta.'],
+    ['➕', 'Mantén Mayús para sumar más cosas a la selección; un toque sin dibujar selecciona lo que está debajo.']
+  ] },
+  { v: '1.4.0', items: [
+    ['📱', 'Mi Pizarra ahora funciona en celulares: la barra de herramientas va abajo y se desliza de lado para ver todo.'],
+    ['✌️', 'Dibuja con un dedo; usa dos dedos para moverte y pellizca para hacer zoom.'],
+    ['👆', 'Doble toque sobre una fórmula o una gráfica para editarla.'],
+    ['🧾', 'Los paneles suben desde abajo como hojas y los menús se abren hacia arriba cuando no caben.']
+  ] },
+  { v: '1.3.0', items: [
+    ['Σ', 'Fórmulas bonitas: herramienta Fórmula (Q) con vista previa y botones para fracciones, raíces, integrales y más.'],
+    ['📏', 'Regla y transportador que se mueven y giran; dibuja pegado al borde de la regla y la línea sale recta.'],
+    ['🧭', 'Compás (C): marca el centro, abre el radio y gira para trazar arcos o círculos.'],
+    ['🎭', 'Cortina para ir revelando la página y foco que ilumina solo donde está el puntero.'],
+    ['🔒', 'Bloquear elementos (Ctrl+L): no se mueven, no se borran y quedan debajo de la tinta.'],
+    ['📄', 'Abre un PDF como páginas para escribir encima, y exporta solo la página actual a PDF.'],
+    ['↔️', 'Cambia el tamaño de trazos, fórmulas, textos, figuras o varios elementos desde las esquinas.']
+  ] },
+  { v: '1.2.8', items: [
+    ['↔️', 'Cambia el tamaño de las gráficas desde sus cuatro esquinas; los ejes se quedan en su lugar.'],
+    ['🖼️', 'Las imágenes se pueden redimensionar desde cualquier esquina, manteniendo su proporción.']
+  ] },
+  { v: '1.2.7', items: [
+    ['🆕', 'Aviso de novedades: cada vez que salga una versión nueva verás aquí qué cambió.'],
+    ['🎨', 'Lo escrito en negro se ve en tiza blanca en las pizarras verde y oscura, y los colores se aclaran.'],
+    ['📈', 'Gráficas: moverte ya no deja rastros, y puedes mover la gráfica completa con Seleccionar.'],
+    ['💾', 'Ctrl+S, Ctrl+O y Ctrl+P funcionan también mientras escribes en el panel de gráfica.'],
+    ['⌨️', 'Atajos en un panel lateral (F1 o ?), y Esc te devuelve a la mano de mover.']
+  ] }
 ];
+const APP_VERSION = CHANGELOGS[0].v;
+function cmpVer(a, b) {
+  const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number);
+  for (let i = 0; i < 3; i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d; }
+  return 0;
+}
+const wn = { timer: 0, versions: [] };
+function fillWhatsNew(versions) {
+  const list = $('#wnList'); list.textContent = '';
+  const multi = versions.length > 1;
+  for (const ver of versions) {
+    if (multi) { const h = document.createElement('li'); h.className = 'wn-ver'; h.textContent = `Versión ${ver.v}`; list.appendChild(h); }
+    for (const [e, t] of ver.items) {
+      const li = document.createElement('li'), a = document.createElement('span'), b = document.createElement('span');
+      a.className = 'e'; a.textContent = e; b.textContent = t; li.append(a, b); list.appendChild(li);
+    }
+  }
+}
+function setWnTitle(open) {
+  const title = $('#wnTitle'), vs = wn.versions;
+  title.textContent = wn.history ? 'Novedades de Mi Pizarra' : '¡Mi Pizarra se actualizó!';
+  const sm = document.createElement('small');
+  const label = wn.history ? `Versión actual ${APP_VERSION}` : vs.length > 1 ? `${vs.length} actualizaciones · hasta la ${APP_VERSION}` : `Versión ${APP_VERSION}`;
+  sm.textContent = open ? label : `${label} · ver novedades`;
+  title.appendChild(sm);
+}
+function showWhatsNew(versions, { history = false, open = false, since = '' } = {}) {
+  const box = $('#whatsNew');
+  wn.versions = versions; wn.history = history;
+  $('#wnSub').textContent = history ? 'Historial de versiones' : versions.length > 1 ? `Lo que cambió desde tu versión ${since || versions[versions.length - 1].v}` : `Novedades de la versión ${APP_VERSION}`;
+  fillWhatsNew(versions);
+  box.classList.remove('leaving'); box.classList.toggle('open', open); box.hidden = false;
+  $('#wnToggle').setAttribute('aria-expanded', String(open));
+  setWnTitle(open);
+  clearTimeout(wn.timer);
+  if (!open) wn.timer = setTimeout(() => { if (!box.classList.contains('open')) closeWhatsNew(); }, 20000);
+}
+function closeWhatsNew() { clearTimeout(wn.timer); const box = $('#whatsNew'); box.classList.add('leaving'); setTimeout(() => { box.hidden = true; box.classList.remove('leaving', 'open'); }, 220); }
+$('#wnToggle').onclick = () => { clearTimeout(wn.timer); const open = $('#whatsNew').classList.toggle('open'); $('#wnToggle').setAttribute('aria-expanded', String(open)); setWnTitle(open); };
+$('#wnClose').onclick = closeWhatsNew;
+function openHistory() { closePops(); showWhatsNew(CHANGELOGS, { history: true, open: true }); }
 function initWhatsNew() {
   let seen = null, returning = false;
   try { seen = localStorage.getItem('mi-pizarra-version-vista'); returning = !!localStorage.getItem('mi-pizarra-autosave'); localStorage.setItem('mi-pizarra-version-vista', APP_VERSION); } catch (_) { return; }
   if (seen === APP_VERSION) return;
   if (!seen && !returning) return; // primera visita: no es una actualización
-  const box = $('#whatsNew'), list = $('#wnList'), title = $('#wnTitle');
-  title.textContent = '¡Mi Pizarra se actualizó!';
-  const sm = document.createElement('small'); sm.textContent = `Versión ${APP_VERSION} · ver novedades`; title.appendChild(sm);
-  $('#wnSub').textContent = `Novedades de la versión ${APP_VERSION}`;
-  list.textContent = '';
-  for (const [e, t] of CHANGELOG) {
-    const li = document.createElement('li'); const a = document.createElement('span'); a.className = 'e'; a.textContent = e;
-    const b = document.createElement('span'); b.textContent = t; li.append(a, b); list.appendChild(li);
-  }
-  box.hidden = false;
-  let timer = setTimeout(() => { if (!box.classList.contains('open')) closeWN(); }, 20000);
-  const toggle = () => {
-    clearTimeout(timer);
-    const open = box.classList.toggle('open');
-    $('#wnToggle').setAttribute('aria-expanded', String(open));
-    sm.textContent = open ? `Versión ${APP_VERSION}` : `Versión ${APP_VERSION} · ver novedades`;
-  };
-  function closeWN() { clearTimeout(timer); box.classList.add('leaving'); setTimeout(() => { box.hidden = true; box.classList.remove('leaving', 'open'); }, 220); }
-  $('#wnToggle').onclick = toggle;
-  $('#wnClose').onclick = closeWN;
+  // Todas las versiones que se perdió (si no sabemos desde cuál viene, solo la actual).
+  const missed = seen ? CHANGELOGS.filter((c) => cmpVer(c.v, seen) > 0) : [CHANGELOGS[0]];
+  if (!missed.length) return;
+  showWhatsNew(missed.slice(0, 6), { since: seen });
 }
 
 async function init() {

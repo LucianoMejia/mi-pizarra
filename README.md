@@ -144,9 +144,9 @@ Otros atajos: Ctrl+Z / Ctrl+Y, Supr, Ctrl+C / V / D, Ctrl+A, AvPág / RePág, Ct
 
 ## Publicar una versión nueva
 
-1. En `script.js` cambia `APP_VERSION` y escribe los cambios en `CHANGELOG` (emoji + texto).
+1. En `script.js` agrega un bloque nuevo **arriba** de `CHANGELOGS` con la versión y sus cambios (emoji + texto). No borres los anteriores: quien se salte versiones verá todas las novedades que se perdió, y en Menú → Novedades está el historial completo.
 2. En `index.html` y `sw.js` cambia el número de versión (`?v=…` y `VERSION`).
-3. Haz commit y push. Quien ya usaba Mi Pizarra verá una sola vez, abajo a la derecha, el aviso de novedades de esa versión (las personas nuevas no lo ven).
+3. Haz commit y push. Quien ya usaba Mi Pizarra verá una sola vez, abajo a la derecha, las novedades de las versiones que no había visto (las personas nuevas no lo ven).
 
 ## Créditos
 
