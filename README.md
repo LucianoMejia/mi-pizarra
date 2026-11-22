@@ -52,6 +52,8 @@ Atajos de una tecla para asignar a los botones de la tableta (ExpressKeys):
 | . y , | Lápiz siguiente / anterior |
 | + y − | Acercar / alejar donde está el lápiz |
 | 0 | Zoom 100 % |
+| Alt + / Alt − | Más / menos grosor del lápiz, borrador, figuras o texto |
+| Alt + rueda | Ajustar el grosor con el mouse |
 | E | Borrador |
 | Esc | Mano de mover |
 | Ctrl+Z / Ctrl+Y | Deshacer / rehacer |

@@ -19,10 +19,10 @@
 <meta name="apple-mobile-web-app-title" content="Mi Pizarra">
 <link rel="manifest" href="manifest.webmanifest">
 <title>Mi Pizarra</title>
-<link rel="icon" href="logo.svg?v=1.4.1" type="image/svg+xml">
-<link rel="alternate icon" href="favicon.ico?v=1.4.1">
-<link rel="apple-touch-icon" href="icon-180.png?v=1.4.1">
-<link rel="stylesheet" href="styles.css?v=1.4.1">
+<link rel="icon" href="logo.svg?v=1.4.2" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico?v=1.4.2">
+<link rel="apple-touch-icon" href="icon-180.png?v=1.4.2">
+<link rel="stylesheet" href="styles.css?v=1.4.2">
 </head>
 <body>
 <canvas id="bg"></canvas>
@@ -30,7 +30,7 @@
 <canvas id="ov"></canvas>
 <textarea id="editor" spellcheck="false"></textarea>
 
-<div id="brand"><img src="logo.svg?v=1.4.1" alt="" width="28" height="28"><span>Mi Pizarra</span></div>
+<div id="brand"><img src="logo.svg?v=1.4.2" alt="" width="28" height="28"><span>Mi Pizarra</span></div>
 
 <div id="topbar" class="bar">
   <button class="ib" id="btnMenu" title="Menú"></button>
@@ -183,6 +183,8 @@
       <h4>Vista</h4>
         <div class="krow"><span class="kk"><kbd>+</kbd><kbd>−</kbd></span><span>Acercar / alejar</span></div>
         <div class="krow"><span class="kk"><kbd>0</kbd></span><span>Zoom 100 %</span></div>
+        <div class="krow"><span class="kk"><kbd>Alt</kbd><i>+</i><kbd>+</kbd><kbd>−</kbd></span><span>Más / menos grosor del lápiz o borrador</span></div>
+        <div class="krow"><span class="kk"><kbd>Alt</kbd><i>+</i><kbd>Rueda</kbd></span><span>Ajustar el grosor con el mouse</span></div>
         <div class="krow"><span class="kk"><kbd>Ctrl</kbd><i>+</i><kbd>Rueda</kbd></span><span>Zoom con el mouse</span></div>
         <div class="krow"><span class="kk"><kbd>Tab</kbd></span><span>Modo presentación</span></div>
         <div class="krow"><span class="kk"><kbd>F11</kbd></span><span>Pantalla completa</span></div>
@@ -226,9 +228,9 @@
 
 <div id="modalBg">
   <div class="modal about">
-    <img src="logo.svg?v=1.4.1" alt="" width="72" height="72">
+    <img src="logo.svg?v=1.4.2" alt="" width="72" height="72">
     <h3>Mi Pizarra</h3>
-    <p class="ver">Versión 1.4.1<br>Tu pizarra digital para clases, tutorías e ideas</p>
+    <p class="ver">Versión 1.4.2<br>Tu pizarra digital para clases, tutorías e ideas</p>
     <p>Hecho por <strong>José Luciano Mejía Arias</strong></p>
     <div class="socials">
       <a class="ig" href="https://instagram.com/lucianomejia17" target="_blank" rel="noopener"><span class="badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.8"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/></svg></span>Instagram</a>
@@ -256,6 +258,6 @@
 
 <div id="toast"></div>
 <input type="file" id="fileInput" accept=".pizarra,.json">
-<script src="script.js?v=1.4.1"></script>
+<script src="script.js?v=1.4.2"></script>
 </body>
 </html>

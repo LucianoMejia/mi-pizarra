@@ -1241,10 +1241,11 @@ function onDouble(cx, cy) {
   if (it) { act = null; openGraphPanel(it, false); return true; }
   return false;
 }
-let gpWheel = 0;
+let gpWheel = 0, sizeWheel = 0;
 ovC.addEventListener('wheel', (e) => {
   e.preventDefault();
   const v = view();
+  if (e.altKey) { sizeWheel += e.deltaY || e.deltaX; if (Math.abs(sizeWheel) >= 40) { stepSize(sizeWheel < 0 ? 1 : -1); sizeWheel = 0; } return; }
   { const [wx, wy] = toWorld(e.clientX, e.clientY), ih = insHit(wx, wy);
     if (ih) { const o = INS[ih.which], [cx, cy] = insCenter(ih.which), step = (e.shiftKey ? 15 : 1) * Math.PI / 180 * Math.sign(e.deltaY || e.deltaX);
       const na = Math.round((o.a + step) * 180 / Math.PI) * Math.PI / 180;
@@ -2401,6 +2402,19 @@ function buildWidths() {
   const r = $('#wRange'); r.oninput = () => setWidth(+r.value, true); r.onchange = () => setWidth(+r.value);
   box.querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => { S.eraserMode = b.dataset.m; buildWidths(); }));
 }
+// Alt + / Alt − y Alt + rueda: cambia el grosor de la herramienta activa.
+const SIZE_NAMES = { eraser: 'Borrador', text: 'Texto', math: 'Fórmula', compass: 'Compás', line: 'Figuras', arrow: 'Figuras', rect: 'Figuras', ellipse: 'Figuras', triangle: 'Figuras', plane: 'Gráfica', func: 'Gráfica', select: 'Selección', lasso: 'Selección' };
+function stepSize(dir) {
+  const wc = widthCfg();
+  if (!wc) { toast('Esta herramienta no tiene grosor'); return; }
+  const { cfg, v } = wc, step = Math.max(1, Math.round(v * 0.15));
+  const nv = clamp(v + dir * step, cfg.min, cfg.max);
+  if (nv === v) { toast(dir > 0 ? 'Ya está en el tamaño máximo' : 'Ya está en el tamaño mínimo'); return; }
+  setWidth(nv);
+  const name = S.tool === 'pen' ? KINDS[curPreset().k].name : SIZE_NAMES[S.tool] || 'Grosor';
+  toast(`${name} · ${nv}`);
+  drawOverlay();
+}
 function setWidth(w, preview) {
   if (S.tool === 'pen') { curPreset().w = w; savePresets(); buildPresets(); }
   else { const key = WKEY[S.tool]; if (!key) return; WIDTHS[key].v = w; }
@@ -2590,6 +2604,11 @@ window.addEventListener('keydown', (e) => {
   if ((tg === 'INPUT' && e.target.type !== 'range') || tg === 'SELECT' || tg === 'TEXTAREA' || e.target.isContentEditable) return;
   if (e.key === '?') { showHelp(); return; }
   const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+  if (e.altKey && !mod) {
+    const plus = e.key === '+' || e.key === '=' || e.code === 'NumpadAdd' || e.code === 'Equal';
+    const minus = e.key === '-' || e.key === '−' || e.key === '–' || e.code === 'NumpadSubtract' || e.code === 'Minus';
+    if (plus || minus) { e.preventDefault(); stepSize(plus ? 1 : -1); return; }
+  }
   if (mod) {
     const map = {
       z: () => (e.shiftKey ? redo() : undo()), y: redo, s: () => save(e.shiftKey), o: openFile, p: exportPDF,
@@ -2676,11 +2695,11 @@ function wire() {
 
 
 /* ---------- Novedades de la versión (aparece una vez por versión) ---------- */
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.4.2';
 const CHANGELOG = [
-  ['➰', 'Selección libre (S): dibuja un lazo alrededor de lo que quieres seleccionar, aunque tenga cualquier forma.'],
-  ['✋', 'Con el lazo puedes mover, cambiar el tamaño, bloquear o borrar lo seleccionado sin cambiar de herramienta.'],
-  ['➕', 'Mantén Mayús para sumar más cosas a la selección; un toque sin dibujar selecciona lo que está debajo.']
+  ['⌨️', 'Alt + y Alt − cambian el grosor del lápiz, borrador, figuras o texto que tengas activo.'],
+  ['🖱️', 'Alt + rueda del mouse ajusta el grosor de forma continua; el círculo del borrador muestra el tamaño nuevo.'],
+  ['💬', 'Al cambiar el grosor aparece un aviso con el tamaño, por ejemplo «Borrador · 60».']
 ];
 function initWhatsNew() {
   let seen = null, returning = false;
