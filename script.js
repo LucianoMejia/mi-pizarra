@@ -55,6 +55,7 @@ const ICONS = {
   compass: '<circle cx="12" cy="5" r="2"/><path d="m11 7-5 14M13 7l5 14M8.5 15h7"/>',
   chev: '<path d="m6 9 6 6 6-6"/>',
   tools: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M17.5 14v7M14 17.5h7"/>',
+  halfc: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/>',
   close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
   float: '<rect x="3" y="7" width="13" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3"/><path d="m6.5 15.5 2-2 2 2 3-3.5"/>',
   pin: '<path d="M12 17v5"/><path d="M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2V17h14v-1.8a2 2 0 0 0-1.1-1.8l-1.8-.9a2 2 0 0 1-1.1-1.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
@@ -1021,7 +1022,7 @@ function loadText(text, path, quiet) {
     doc = { pages: d.pages.map((p) => ({ bg: BGS.some((b) => b[0] === p.bg) ? p.bg : 'grid', board: BOARDS[p.board] ? p.board : 'white', items: Array.isArray(p.items) ? p.items : [], undo: [], redo: [], view: p.view && isFinite(p.view.s) ? p.view : null })) };
     for (const pg of doc.pages) { try { migrateErasers(pg); } catch (err) { console.error(err); } }
     cur = clamp(d.cur | 0, 0, doc.pages.length - 1); filePath = path || null; S.sel = []; dirty = false;
-    FP.items = Array.isArray(d.float) ? d.float.filter((i) => i && i.t === 'stroke' && Array.isArray(i.pts)) : []; FP.undo = []; FP.redo = []; fpDraw();
+    FP.items = Array.isArray(d.float) ? d.float.filter((i) => i && FP_TYPES.includes(i.t)) : []; FP.undo = []; FP.redo = []; fpDraw();
     syncColorToBoard(); afterPageChange(); if (!quiet) toast('Pizarra abierta');
     return true;
   } catch (_) { if (!quiet) toast('No se pudo abrir: archivo no válido'); return false; }
@@ -1084,6 +1085,7 @@ ovC.addEventListener('pointerdown', (e) => {
   if (gp.it && (tool === 'func' || tool === 'plane') && P().items.includes(gp.it) && inPlane(gp.it, wx, wy)) {
     act = { type: 'gpan', id, sx: e.clientX, sy: e.clientY, ox0: gp.it.ox || 0, oy0: gp.it.oy || 0 }; ovC.style.cursor = 'grabbing'; return;
   }
+  if (gp.it && (tool === 'func' || tool === 'plane')) { graphDone(); return; }
   switch (tool) {
     case 'pen': {
       const pre = curPreset(), hl = pre.k === 'hl';
@@ -1442,6 +1444,7 @@ function finishShape(a, e) {
     if (a.tool === 'func') { snap(); P().items.push(it); changed(); openGraphPanel(it, true); return; }
   } else if (tiny) { req(); return; }
   snap(); P().items.push(it); changed();
+  if (it.t === 'plane') { setTool('select'); S.sel = [it]; setTimeout(() => { updateSelBar(); req(); }, 0); }
 }
 
 /* Manijas para cambiar el tamaño de imágenes y gráficas (una sola selección). */
@@ -1711,15 +1714,16 @@ const miniIco = (n) => `<svg viewBox="0 0 24 24">${MINI[n]}</svg>`;
 for (const id of ['#gpKx', '#gpKy']) $(id).innerHTML = KS.map((k) => `<option value="${k}">${String(k).replace('.', ',')}</option>`).join('');
 $('#gpClose').innerHTML = ico('x2'); $('#kpClose').innerHTML = ico('x2'); $('#gpZoomIn').innerHTML = ico('plus'); $('#gpZoomOut').innerHTML = ico('minus');
 
-function openGraphPanel(it, isNew) {
+function openGraphPanel(it, isNew, page = P()) {
   commitEditor(); closePops(); closeHelp();
   if (S.tool !== 'func' && S.tool !== 'plane') { if (gp.it) closeGraphPanel(); setTool('func'); }
   if (gp.it && gp.it !== it) closeGraphPanel();
-  if (gp.it !== it) { gp.it = it; gp.page = P(); gp.before = isNew ? null : JSON.stringify(P().items); }
+  if (gp.it !== it) { gp.it = it; gp.page = page; gp.before = isNew ? null : JSON.stringify(page.items); }
   exOf(it);
   if (!it.ex.length) it.ex.push({ e: '', c: FX_COLORS[0] });
   buildGPRows(); syncGPOpts(); updateGPStatus();
   $('#graphPanel').classList.add('show');
+  if (page === FPAGE) fpAvoidPanel();
   const inputs = $('#gpRows').querySelectorAll('input[type=text]');
   if (isNew && inputs.length) setTimeout(() => inputs[inputs.length - 1].focus(), 60);
   drawOverlay();
@@ -1732,10 +1736,18 @@ function closeGraphPanel() {
   if (gp.before !== null && pg.items.includes(it) && gp.before !== JSON.stringify(pg.items)) { pg.undo.push(gp.before); pg.redo = []; }
   gp.it = null; gp.before = null; gp.page = null;
   $('#graphPanel').classList.remove('show');
+  if (fpShifted) { fpShifted = false; fpLayout(); }
   if (document.activeElement && $('#graphPanel').contains(document.activeElement)) document.activeElement.blur();
   changed();
 }
-function gpChanged() { cacheValid = false; req(); updateGPStatus(); clearTimeout(saveTimer); saveTimer = setTimeout(autosave, 700); dirty = true; }
+// Al terminar una gráfica se vuelve a Seleccionar con ella elegida, para moverla o ajustarla sin crear otra por accidente.
+function graphDone() {
+  const it = gp.it, pg = gp.page; closeGraphPanel(); setTool('select');
+  if (it && pg === P() && P().items.includes(it)) { S.sel = [it]; updateSelBar(); }
+  if (pg === FPAGE) fpDraw();
+  req();
+}
+function gpChanged() { cacheValid = false; req(); if (gp.page === FPAGE) fpDraw(); updateGPStatus(); clearTimeout(saveTimer); saveTimer = setTimeout(autosave, 700); dirty = true; }
 function buildGPRows() {
   const box = $('#gpRows'); box.textContent = '';
   gp.it.ex.forEach((r, i) => {
@@ -1752,7 +1764,7 @@ function buildGPRows() {
     inp.oninput = () => { r.e = inp.value; gpChanged(); };
     inp.onkeydown = (e) => {
       if (e.key === 'Enter') { e.preventDefault(); const next = box.querySelectorAll('input[type=text]')[i + 1]; if (next) next.focus(); else addGPRow(); }
-      if (e.key === 'Escape') { e.preventDefault(); closeGraphPanel(); setTool('hand'); }
+      if (e.key === 'Escape') { e.preventDefault(); graphDone(); }
     };
     eye.onclick = () => { r.hide = !r.hide; buildGPRows(); gpChanged(); };
     del.onclick = () => { gp.it.ex.splice(i, 1); if (!gp.it.ex.length) gp.it.ex.push({ e: '', c: FX_COLORS[0] }); buildGPRows(); gpChanged(); };
@@ -1847,7 +1859,7 @@ $('#gpCoords').onchange = (e) => { gp.it.coords = e.target.checked; gpChanged();
 $('#gpKx').onchange = (e) => { gp.it.kx = +e.target.value; gpChanged(); };
 $('#gpKy').onchange = (e) => { gp.it.ky = +e.target.value; gpChanged(); };
 $('#gpAdd').onclick = () => addGPRow();
-$('#gpClose').onclick = closeGraphPanel;
+$('#gpClose').onclick = graphDone;
 $('#gpCenter').onclick = () => { gp.it.ox = 0; gp.it.oy = 0; gpChanged(); };
 const gpCenterPt = () => { const g = planeGeom(gp.it); return [g.x + g.w / 2, g.y + g.h / 2]; };
 $('#gpZoomIn').onclick = () => { zoomPlane(gp.it, -1, ...gpCenterPt()); };
@@ -2170,27 +2182,36 @@ function updateInsBtn() { buildInsPop(); }
 /* ---------- Pizarra flotante: hoja auxiliar para cálculos, encima de todo ---------- */
 // Vive en la pantalla (no en la página): sigue visible al moverte, hacer zoom o cambiar de página.
 // Con el pin queda fija; sin el pin se arrastra por la barra y se cambia de tamaño por la esquina.
-const FP = { open: false, pinned: false, x: null, y: null, w: 440, h: 320, items: [], undo: [], redo: [], v: { x: 0, y: 0, s: 1 } };
+const FP = { open: false, pinned: false, bgo: 1, x: null, y: null, w: 440, h: 320, items: [], undo: [], redo: [], v: { x: 0, y: 0, s: 1 } };
+const FPAGE = { get items() { return FP.items; }, get undo() { return FP.undo; }, get redo() { return FP.redo; }, set redo(v) { FP.redo = v; } };
+const FP_TYPES = ['stroke', 'line', 'arrow', 'rect', 'ellipse', 'triangle', 'poly', 'plane'];
 let fpEl = null, fpC = null, fpX = null, fpAct = null, fpLive = null, fpRaf = 0;
 function fpLoadPrefs() {
-  try { const q = JSON.parse(localStorage.getItem('mi-pizarra-float') || 'null'); if (q) { for (const k of ['open', 'pinned', 'x', 'y', 'w', 'h']) if (q[k] !== undefined) FP[k] = q[k]; } } catch (_) {}
+  try { const q = JSON.parse(localStorage.getItem('mi-pizarra-float') || 'null'); if (q) { for (const k of ['open', 'pinned', 'bgo', 'x', 'y', 'w', 'h']) if (q[k] !== undefined) FP[k] = q[k]; } } catch (_) {}
 }
-function fpSavePrefs() { try { localStorage.setItem('mi-pizarra-float', JSON.stringify({ open: FP.open, pinned: FP.pinned, x: FP.x, y: FP.y, w: FP.w, h: FP.h })); } catch (_) {} }
+function fpSavePrefs() { try { localStorage.setItem('mi-pizarra-float', JSON.stringify({ open: FP.open, pinned: FP.pinned, bgo: FP.bgo, x: FP.x, y: FP.y, w: FP.w, h: FP.h })); } catch (_) {} }
 function fpBuild() {
   if (fpEl) return;
   fpEl = document.createElement('div'); fpEl.id = 'floatPad'; fpEl.className = 'fpad'; fpEl.hidden = true;
   fpEl.innerHTML = `<div class="fp-head"><span class="fp-grip">${ico('grip')}</span><span class="fp-title">Pizarra flotante</span>
+    <button class="ib sm" data-f="op" title="Opacidad del fondo">${ico('halfc')}</button>
     <button class="ib sm" data-f="undo" title="Deshacer en la pizarra flotante">${ico('undo')}</button>
     <button class="ib sm" data-f="clear" title="Limpiar la pizarra flotante">${ico('trash')}</button>
     <button class="ib sm" data-f="send" title="Pasar a la pizarra (queda seleccionado para moverlo)">${ico('send')}</button>
     <button class="ib sm" data-f="pin" title="Fijar en su lugar">${ico('pin')}</button>
     <button class="ib sm" data-f="close" title="Cerrar (B)">${ico('close')}</button></div>
+    <div class="fp-oprow" hidden><span>Fondo</span><input type="range" min="10" max="100" step="5"><b></b></div>
     <canvas class="fp-canvas"></canvas><div class="fp-resize" title="Cambiar tamaño"></div>`;
   document.body.appendChild(fpEl);
   fpC = fpEl.querySelector('canvas'); fpX = fpC.getContext('2d');
+  // Opacidad del fondo: deja ver la pizarra de atrás (lo escrito en la hoja sigue nítido).
+  const opR = fpEl.querySelector('.fp-oprow input'), opV = fpEl.querySelector('.fp-oprow b');
+  const setBgo = (v) => { FP.bgo = clamp(v / 100, 0.1, 1); opR.value = Math.round(FP.bgo * 100); opV.textContent = Math.round(FP.bgo * 100) + '%'; fpEl.classList.toggle('see', FP.bgo < 1); fpDraw(); };
+  opR.oninput = () => setBgo(+opR.value); opR.onchange = () => fpSavePrefs(); setBgo(FP.bgo * 100);
   fpEl.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => {
     const f = b.dataset.f;
-    if (f === 'undo') fpUndo(); else if (f === 'clear') fpClear(); else if (f === 'send') fpSend();
+    if (f === 'op') { const r = fpEl.querySelector('.fp-oprow'); r.hidden = !r.hidden; b.classList.toggle('on', !r.hidden); fpLayout(); }
+    else if (f === 'undo') fpUndo(); else if (f === 'clear') fpClear(); else if (f === 'send') fpSend();
     else if (f === 'pin') { FP.pinned = !FP.pinned; fpSavePrefs(); fpLayout(); toast(FP.pinned ? 'Pizarra flotante fijada' : 'Ahora puedes moverla'); }
     else if (f === 'close') toggleFloat(false);
   }));
@@ -2220,6 +2241,8 @@ function fpBuild() {
   fpC.addEventListener('wheel', (e) => {
     e.preventDefault(); e.stopPropagation();
     const r = fpC.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, v = FP.v;
+    const wx = (mx - v.x) / v.s, wy = (my - v.y) / v.s;
+    if (gp.page === FPAGE && gp.it && !e.ctrlKey && inPlane(gp.it, wx, wy)) { fpWheel += e.deltaY; if (Math.abs(fpWheel) >= 60) { zoomPlane(gp.it, fpWheel > 0 ? 1 : -1, wx, wy); fpWheel = 0; } return; }
     if (e.ctrlKey || e.metaKey) { const f = clamp(Math.exp(-e.deltaY * 0.0025), 0.5, 2), ns = clamp(v.s * f, 0.2, 6), k = ns / v.s; v.x = mx - (mx - v.x) * k; v.y = my - (my - v.y) * k; v.s = ns; }
     else { v.x -= e.shiftKey ? e.deltaY : e.deltaX; v.y -= e.shiftKey ? 0 : e.deltaY; }
     fpDraw();
@@ -2252,7 +2275,7 @@ function fpDraw() {
     const d = devicePixelRatio || 1, w = fpC.width / d, h = fpC.height / d, v = FP.v, board = BOARDS[P().board] || BOARDS.white;
     const prev = paintBoard; paintBoard = board;
     fpX.setTransform(d, 0, 0, d, 0, 0); fpX.globalAlpha = 1; fpX.globalCompositeOperation = 'source-over';
-    fpX.fillStyle = board.bg; fpX.fillRect(0, 0, w, h);
+    fpX.clearRect(0, 0, w, h); fpX.globalAlpha = FP.bgo; fpX.fillStyle = board.bg; fpX.fillRect(0, 0, w, h); fpX.globalAlpha = 1;
     // Cuadrícula de puntos suave, para orientarse al escribir.
     const g = 24 * v.s; if (g > 6) {
       fpX.fillStyle = isDarkBoard(board) ? 'rgba(255,255,255,.16)' : 'rgba(0,0,0,.16)';
@@ -2262,6 +2285,10 @@ function fpDraw() {
     fpX.setTransform(d * v.s, 0, 0, d * v.s, d * v.x, d * v.y);
     for (const it of FP.items) drawSafe(fpX, it);
     if (fpLive) drawSafe(fpX, fpLive);
+    if (gp.page === FPAGE && gp.it && FP.items.includes(gp.it)) {
+      const g = planeGeom(gp.it); fpX.strokeStyle = '#0071E3'; fpX.lineWidth = 2 / v.s; fpX.setLineDash([6 / v.s, 4 / v.s]);
+      fpX.strokeRect(g.x - 4 / v.s, g.y - 4 / v.s, g.w + 8 / v.s, g.h + 8 / v.s); fpX.setLineDash([]);
+    }
     const ring = fpAct && fpAct.type === 'erase' ? fpAct.cur : !fpAct ? fpHover : null;
     if (ring) {
       fpX.setTransform(d, 0, 0, d, 0, 0); fpX.strokeStyle = isDarkBoard(board) ? 'rgba(255,255,255,.6)' : 'rgba(0,0,0,.45)'; fpX.lineWidth = 1;
@@ -2286,14 +2313,65 @@ function fpDown(e) {
     fpAct = { type: 'erase', id: e.pointerId, last: [x, y], cur: [sx, sy], did: false };
     fpEraseTo(x, y); return;
   }
-  // Cualquier otra herramienta escribe con el lápiz activo.
-  const pre = curPreset(), hl = pre.k === 'hl', s = FP.v.s;
+  const tool = S.tool, s = FP.v.s;
+  // Gráficas: con el panel abierto sobre una gráfica de la hoja, arrastrar dentro la recorre y un clic afuera la termina.
+  if ((tool === 'func' || tool === 'plane') && gp.page === FPAGE && gp.it) {
+    if (inPlane(gp.it, x, y)) { fpAct = { type: 'gpan', id: e.pointerId, sx: e.clientX, sy: e.clientY, ox0: gp.it.ox || 0, oy0: gp.it.oy || 0 }; return; }
+    fpC.releasePointerCapture(e.pointerId); graphDone(); return;
+  }
+  if (tool === 'func') {
+    const pl = [...FP.items].reverse().find((i) => i.t === 'plane' && inPlane(i, x, y));
+    if (pl) { fpC.releasePointerCapture(e.pointerId); openGraphPanel(pl, false, FPAGE); fpDraw(); return; }
+  }
+  // Figuras, planos y gráficas: se arrastran igual que en la pizarra.
+  if (['line', 'arrow', 'rect', 'ellipse', 'triangle', 'plane', 'func'].includes(tool)) {
+    const t = tool === 'func' ? 'plane' : tool;
+    let px = x, py = y; if (t === 'plane') { px = Math.round(x / GRID) * GRID; py = Math.round(y / GRID) * GRID; }
+    fpLive = { t, x1: px, y1: py, x2: px, y2: py, c: S.color, w: r2(WIDTHS.shape.v / s) };
+    if (t !== 'plane' && S.op < 1) fpLive.o = S.op;
+    if (t === 'plane') Object.assign(fpLive, { grid: true, ex: [], params: {}, u: GRID, kx: 1, ky: 1, w: Math.max(fpLive.w, 2) });
+    fpAct = { type: 'shape', tool, id: e.pointerId, sx: e.clientX, sy: e.clientY, wx: x, wy: y };
+    fpDraw(); return;
+  }
+  // Seleccionar: arrastra lo que tocas; doble clic sobre una gráfica abre sus funciones.
+  if (tool === 'select' || tool === 'lasso') {
+    const hitIt = [...FP.items].reverse().find((i) => (i.t === 'plane' ? inPlane(i, x, y) : hit(i, x, y, 6 / s)));
+    if (!hitIt) { fpAct = { type: 'pan', id: e.pointerId, sx: e.clientX, sy: e.clientY, v0: { ...FP.v } }; return; }
+    const now = performance.now();
+    if (hitIt.t === 'plane' && fpLastTap.it === hitIt && now - fpLastTap.t < 380) { fpLastTap = { t: 0, it: null }; fpC.releasePointerCapture(e.pointerId); openGraphPanel(hitIt, false, FPAGE); fpDraw(); return; }
+    fpLastTap = { t: now, it: hitIt };
+    fpAct = { type: 'move', id: e.pointerId, it: hitIt, last: [x, y], sx: e.clientX, sy: e.clientY, moved: false }; return;
+  }
+  if (tool === 'laser' || tool === 'compass') { fpAct = { type: 'pan', id: e.pointerId, sx: e.clientX, sy: e.clientY, v0: { ...FP.v } }; return; }
+  if (tool === 'text' || tool === 'math') { fpC.releasePointerCapture(e.pointerId); toast('Texto y fórmulas van en la pizarra principal; aquí escribe a mano'); return; }
+  // Lápices: escribe con el lápiz activo.
+  const pre = curPreset(), hl = pre.k === 'hl';
   fpLive = { t: 'stroke', c: pre.c, w: r2(pre.w / s), pts: [[r2(x), r2(y), pr(e)]] };
   if (hl) fpLive.hl = 1; else fpLive.k = pre.k;
   if (e.pointerType === 'pen') fpLive.pr = 1;
   if ((pre.o ?? 1) < 1) fpLive.o = pre.o;
   fpAct = { type: 'draw', id: e.pointerId, sm: [x, y] };
   fpDraw();
+}
+function fpFinishShape(a, e) {
+  const it = fpLive; fpLive = null;
+  const tiny = Math.hypot(e.clientX - a.sx, e.clientY - a.sy) < 8;
+  if (it.t === 'plane') {
+    if (tiny || Math.abs(it.x2 - it.x1) < GRID * 2 || Math.abs(it.y2 - it.y1) < GRID * 2) {
+      // Un clic: un plano que quepa en la hoja.
+      const d = devicePixelRatio || 1, vw = fpC.width / d / FP.v.s, vh = fpC.height / d / FP.v.s;
+      const hw = Math.max(2, Math.min(6, Math.floor((vw * 0.38) / GRID))), hh = Math.max(2, Math.min(4, Math.floor((vh * 0.4) / GRID)));
+      const L = -FP.v.x / FP.v.s, T = -FP.v.y / FP.v.s; // lo visible de la hoja: el plano queda adentro
+      const cx = Math.round(clamp(a.wx, L + (hw + 1) * GRID, L + vw - (hw + 1) * GRID) / GRID) * GRID;
+      const cy = Math.round(clamp(a.wy, T + (hh + 1) * GRID, T + vh - (hh + 1) * GRID) / GRID) * GRID;
+      Object.assign(it, { x1: cx - hw * GRID, y1: cy - hh * GRID, x2: cx + hw * GRID, y2: cy + hh * GRID });
+    }
+    fpSnap(); FP.items = [...FP.items, it]; fpChanged();
+    if (a.tool === 'func') openGraphPanel(it, true, FPAGE); else setTool('select');
+    fpDraw(); return;
+  }
+  if (tiny) { fpDraw(); return; }
+  fpSnap(); FP.items = [...FP.items, it]; fpChanged();
 }
 function fpEraseTo(x, y) {
   const R = WIDTHS.eraser.v / 2 / FP.v.s, before = FP.items;
@@ -2305,7 +2383,14 @@ function fpEraseTo(x, y) {
   if (did) { if (!fpAct.did) { FP.undo.push(before); FP.redo = []; fpAct.did = true; } FP.items = items; }
   fpAct.last = [x, y];
 }
-let fpHover = null;
+// Mientras se editan las funciones de una gráfica de la hoja, la hoja se corre para no tapar el panel.
+let fpShifted = false;
+function fpAvoidPanel() {
+  const panel = $('#graphPanel'), left = innerWidth - panel.offsetWidth - 16;
+  if (!fpEl || FP.x + FP.w <= left - 8) return;
+  const nx = Math.max(8, left - FP.w - 12); fpEl.style.left = nx + 'px'; fpShifted = true;
+}
+let fpHover = null, fpWheel = 0, fpLastTap = { t: 0, it: null };
 function fpMove(e) {
   if (!fpAct) { const was = fpHover; fpHover = S.tool === 'eraser' && e.pointerType !== 'touch' ? fpPt(e).slice(2) : null; if (fpHover || was) fpDraw(); return; }
   if (e.pointerId !== fpAct.id) return;
@@ -2313,6 +2398,22 @@ function fpMove(e) {
   if (fpAct.type === 'pan') { FP.v.x = fpAct.v0.x + e.clientX - fpAct.sx; FP.v.y = fpAct.v0.y + e.clientY - fpAct.sy; fpDraw(); return; }
   let evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null; if (!evs || !evs.length) evs = [e];
   if (fpAct.type === 'erase') { for (const ev of evs) { const [x, y, sx, sy] = fpPt(ev); fpAct.cur = [sx, sy]; fpEraseTo(x, y); } fpDraw(); return; }
+  if (fpAct.type === 'shape') {
+    let [x, y] = fpPt(e);
+    if (fpLive.t === 'plane') { x = Math.round(x / GRID) * GRID; y = Math.round(y / GRID) * GRID; }
+    else if (e.shiftKey) [x, y] = constrain(fpLive, x, y);
+    fpLive.x2 = x; fpLive.y2 = y; fpDraw(); return;
+  }
+  if (fpAct.type === 'move') {
+    const [x, y] = fpPt(e), dx = x - fpAct.last[0], dy = y - fpAct.last[1];
+    if (!fpAct.moved) { if (Math.hypot(e.clientX - fpAct.sx, e.clientY - fpAct.sy) < 3) return; fpSnap(); const c = JSON.parse(JSON.stringify(fpAct.it)); FP.items = FP.items.map((i) => (i === fpAct.it ? c : i)); fpAct.it = c; fpAct.moved = true; }
+    moveItem(fpAct.it, dx, dy); fpAct.last = [x, y]; fpDraw(); return;
+  }
+  if (fpAct.type === 'gpan') {
+    const u = gp.it.u || GRID;
+    gp.it.ox = +(fpAct.ox0 + (e.clientX - fpAct.sx) / FP.v.s / u).toFixed(4); gp.it.oy = +(fpAct.oy0 + (e.clientY - fpAct.sy) / FP.v.s / u).toFixed(4);
+    gpChanged(); return;
+  }
   const f = SMOOTH[S.smooth] || 0;
   for (const ev of evs) {
     let [x, y] = fpPt(ev);
@@ -2328,10 +2429,17 @@ function fpUp(e) {
   e.stopPropagation();
   const a = fpAct; fpAct = null;
   if (a.type === 'draw' && fpLive) { fpSnap(); FP.items = [...FP.items, fpLive]; fpLive = null; fpChanged(); return; }
+  if (a.type === 'shape' && fpLive) { fpFinishShape(a, e); return; }
+  if (a.type === 'move') { if (a.moved) fpChanged(); return; }
+  if (a.type === 'gpan') { fpChanged(); return; }
   if (a.type === 'erase' && a.did) fpChanged(); else fpDraw();
 }
-function fpUndo() { if (!FP.undo.length) { toast('Nada que deshacer en la pizarra flotante'); return; } FP.redo.push(FP.items); FP.items = FP.undo.pop(); fpChanged(); }
-function fpClear() { if (!FP.items.length) return; fpSnap(); FP.items = []; FP.v = { x: 0, y: 0, s: 1 }; fpChanged(); toast('Pizarra flotante limpia · Deshacer la recupera'); }
+function fpUndo() {
+  if (gp.page === FPAGE) closeGraphPanel();
+  if (!FP.undo.length) { toast('Nada que deshacer en la pizarra flotante'); return; }
+  FP.redo.push(FP.items); const prev = FP.undo.pop(); FP.items = typeof prev === 'string' ? JSON.parse(prev) : prev; fpChanged();
+}
+function fpClear() { if (!FP.items.length) return; if (gp.page === FPAGE) closeGraphPanel(); fpSnap(); FP.items = []; FP.v = { x: 0, y: 0, s: 1 }; fpChanged(); toast('Pizarra flotante limpia · Deshacer la recupera'); }
 // Copia lo escrito a la página actual, con el mismo tamaño en pantalla y centrado donde estás mirando.
 function fpSend() {
   if (!FP.items.length) { toast('La pizarra flotante está vacía'); return; }
@@ -2341,7 +2449,8 @@ function fpSend() {
   const left = FP.x, right = innerWidth - (FP.x + FP.w);
   const tx = left > right ? Math.max(left / 2, 80) : Math.min(FP.x + FP.w + right / 2, innerWidth - 80);
   const v = view(), k = FP.v.s / v.s, cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2, [wx, wy] = toWorld(tx, H / 2);
-  const out = FP.items.map((it) => ({ ...it, w: r2(it.w * k), pts: it.pts.map((p) => [r2(wx + (p[0] - cx) * k), r2(wy + (p[1] - cy) * k), p[2]]) }));
+  if (gp.page === FPAGE) closeGraphPanel();
+  const out = FP.items.map((it) => { const c = JSON.parse(JSON.stringify(it)), n = Object.assign(c, scaledItem(c, cx, cy, k)); moveItem(n, wx - cx, wy - cy); return n; });
   snap(); P().items.push(...out); changed();
   setTool('select'); S.sel = out; updateSelBar(); req();
   toast('Copiado a la pizarra: arrástralo a donde quieras');
@@ -2487,7 +2596,7 @@ window.addEventListener('keydown', (e) => {
 }, true);
 
 /* ---------- Páginas ---------- */
-function afterPageChange() { if (gp.it && !P().items.includes(gp.it)) closeGraphPanel(); syncColorToBoard(); S.sel = []; live = null; act = null; cacheValid = false; updatePageUI(); updateHistoryUI(); updateZoomUI(); updateBgPop(); setTitle(); req(); if (FP.open) fpDraw(); }
+function afterPageChange() { if (gp.it && gp.page !== FPAGE && !P().items.includes(gp.it)) closeGraphPanel(); syncColorToBoard(); S.sel = []; live = null; act = null; cacheValid = false; updatePageUI(); updateHistoryUI(); updateZoomUI(); updateBgPop(); setTitle(); req(); if (FP.open) fpDraw(); }
 function goPage(i) { commitEditor(); const n = clamp(i, 0, doc.pages.length - 1); if (n === cur) return; cur = n; syncColorToBoard(); afterPageChange(); autosave(); }
 function addPage() { commitEditor(); const np = mkPage(P()); np.view = null; doc.pages.splice(cur + 1, 0, np); cur++; afterPageChange(); changed(); toast(`Página ${cur + 1} creada`); }
 function dupPage() { commitEditor(); const p = P(); const np = mkPage(p); np.items = JSON.parse(JSON.stringify(p.items)); doc.pages.splice(cur + 1, 0, np); cur++; afterPageChange(); changed(); toast('Página duplicada'); }
@@ -3155,7 +3264,7 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (mx.st && e.key === 'Escape') { closeMathEditor(); return; }
-  if (gp.it && e.key === 'Escape') { closeGraphPanel(); setTool('hand'); return; }
+  if (gp.it && e.key === 'Escape') { graphDone(); return; }
   if (e.key === 'Escape' && $('#keysPanel').classList.contains('show')) { closeHelp(); return; }
   if (e.target === ed) {
     if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); commitEditor(); if (e.key === 'Escape') setTool('hand'); }
@@ -3259,6 +3368,12 @@ function wire() {
    Para publicar una versión nueva, agrega un bloque ARRIBA de la lista (no borres los anteriores).
    Quien se haya saltado versiones verá todas las novedades que se perdió. */
 const CHANGELOGS = [
+  { v: '1.4.5', items: [
+    ['📈', 'Al crear un plano o terminar una gráfica vuelves a Seleccionar con ella elegida: un clic afuera ya no crea otra por accidente.'],
+    ['🗒️', 'En la pizarra flotante ahora puedes hacer figuras, planos y gráficas con funciones, y mover lo que hiciste con Seleccionar.'],
+    ['🌗', 'Opacidad del fondo de la pizarra flotante, para ver la pizarra de atrás mientras trabajas.'],
+    ['↔️', 'Al editar una gráfica de la pizarra flotante, la hoja se corre para no tapar el panel.']
+  ] },
   { v: '1.4.4', items: [
     ['🗒️', 'Pizarra flotante: una hoja auxiliar para hacer cálculos aparte, encima de la pizarra (tecla B o Instrumentos).'],
     ['📌', 'Arrástrala por la barra y cambia su tamaño por la esquina; con el pin queda fija y no se mueve.'],

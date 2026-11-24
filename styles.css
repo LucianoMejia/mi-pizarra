@@ -535,12 +535,11 @@ body.present .bar:not(#topbar), body.present #symbols, body.present .sheet{ disp
 /* ---------- Pizarra flotante ---------- */
 .fpad{
   position:fixed; z-index:20; display:flex; flex-direction:column; overflow:hidden;
-  background:var(--material-strong);
-  -webkit-backdrop-filter:saturate(180%) blur(20px); backdrop-filter:saturate(180%) blur(20px);
   border-radius:var(--radius-md); box-shadow:var(--shadow-pop);
   animation: fp-in 200ms var(--ease-out);
 }
 @keyframes fp-in{ from{ opacity:0; transform:translateY(6px) scale(.98); } to{ opacity:1; transform:none; } }
+.fp-head, .fp-oprow{ background:var(--material-strong); -webkit-backdrop-filter:saturate(180%) blur(20px); backdrop-filter:saturate(180%) blur(20px); }
 .fp-head{ flex:none; display:flex; align-items:center; gap:1px; height:40px; padding:0 4px 0 6px; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
 .fpad.dragging .fp-head{ cursor:grabbing; }
 .fpad.pinned .fp-head{ cursor:default; }
@@ -588,3 +587,10 @@ body.present .bar:not(#topbar), body.present #symbols, body.present .sheet{ disp
 @media (hover:hover) and (pointer:fine){ .pinb:hover{ background:var(--fill); opacity:1; } .pinb.on:hover{ background:var(--accent-fill); } }
 .pi-ico{ position:relative; display:grid; place-items:center; width:20px; height:20px; }
 .pi-ico i{ position:absolute; left:2px; right:2px; bottom:-2px; height:4px; border-radius:2px; }
+
+.fp-oprow{ flex:none; display:flex; align-items:center; gap:10px; padding:4px 12px 8px; border-top:.5px solid var(--separator); font:500 12px/1 var(--font-ui); color:var(--ink-soft); }
+.fp-oprow[hidden]{ display:none; }
+.fp-oprow input{ flex:1; accent-color:var(--accent); }
+.fp-oprow b{ width:36px; text-align:right; font-weight:600; font-variant-numeric:tabular-nums; }
+.fpad.see .fp-canvas{ border-top-color:transparent; }
+.fpad.see{ outline:1.5px dashed var(--ink-faint); outline-offset:-1px; }

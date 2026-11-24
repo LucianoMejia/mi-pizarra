@@ -86,7 +86,7 @@ En los grupos **Matemáticas** y **Presentar**:
 - **Compás (C)**: presiona en el centro, abre hasta el radio y gira para trazar el arco. Si sueltas sin girar, dibuja el círculo completo.
 - **Cortina**: tapa la página y la arrastras hacia abajo para ir revelando.
 - **Foco**: oscurece todo menos un círculo que sigue al puntero (tamaño S, M o L).
-- **Pizarra flotante (B)**: una hoja auxiliar encima de todo para hacer cálculos aparte. Se arrastra por su barra y cambia de tamaño por la esquina; con el pin queda fija. Escribe con el lápiz activo, borra con la goma y la mano mueve su contenido (Ctrl + rueda hace zoom). Tiene su propio deshacer, y **Pasar a la pizarra** copia lo escrito a la página actual. Se guarda con el archivo.
+- **Pizarra flotante (B)**: una hoja auxiliar encima de todo para hacer cálculos aparte. Se arrastra por su barra y cambia de tamaño por la esquina; con el pin queda fija. Escribe con el lápiz activo, y también acepta figuras, planos y gráficas con funciones (doble clic sobre una gráfica para editarla); Seleccionar mueve lo que hiciste, la goma borra y la mano mueve su contenido (Ctrl + rueda hace zoom). El botón ◐ ajusta la opacidad del fondo para ver la pizarra de atrás. Tiene su propio deshacer, y **Pasar a la pizarra** copia lo escrito a la página actual. Se guarda con el archivo.
 
 ## Selección libre (lazo)
 
