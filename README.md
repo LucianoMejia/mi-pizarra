@@ -74,14 +74,19 @@ Vienen 7 lápices listos: bolígrafo negro, azul y rojo, pluma caligráfica, mar
 
 Herramienta **Fórmula (Q)**: haz clic donde quieras y escribe en LaTeX, por ejemplo `\frac{-b \pm \sqrt{b^2-4ac}}{2a}`, o usa los botones (fracción, raíz, potencia, Σ, ∫, límite, matriz, sistema…). Se ve como en un libro, se adapta al color de la pizarra y sale en PNG/PDF. Doble clic para editarla.
 
+## Barra de herramientas en grupos
+
+Las herramientas están en grupos: **Selección**, **Lápices y resaltadores**, **Figuras**, **Matemáticas** y **Presentar**. El botón de cada grupo muestra una de sus herramientas: un toque la usa y otro toque abre el grupo completo. En el menú del grupo, el **pin** de cada herramienta la deja fija en la barra (o la quita). Lo que elijas se recuerda, y **Menú → Restablecer barra de herramientas** la deja como viene (solo tres bolígrafos y un resaltador fijos). Al pasar el mouse por cualquier herramienta aparece cómo funciona y su atajo.
+
 ## Instrumentos y presentación
 
-Botón de la regla en la barra:
+En los grupos **Matemáticas** y **Presentar**:
 - **Regla**: arrástrala para moverla y gírala con el botón azul o la rueda (Mayús = de 15° en 15°). Dibuja con cualquier lápiz pegado a uno de sus bordes y la línea sale perfectamente recta.
 - **Transportador**: se mueve y gira igual; escala de 0° a 180° en ambos sentidos.
 - **Compás (C)**: presiona en el centro, abre hasta el radio y gira para trazar el arco. Si sueltas sin girar, dibuja el círculo completo.
 - **Cortina**: tapa la página y la arrastras hacia abajo para ir revelando.
 - **Foco**: oscurece todo menos un círculo que sigue al puntero (tamaño S, M o L).
+- **Pizarra flotante (B)**: una hoja auxiliar encima de todo para hacer cálculos aparte. Se arrastra por su barra y cambia de tamaño por la esquina; con el pin queda fija. Escribe con el lápiz activo, borra con la goma y la mano mueve su contenido (Ctrl + rueda hace zoom). Tiene su propio deshacer, y **Pasar a la pizarra** copia lo escrito a la página actual. Se guarda con el archivo.
 
 ## Selección libre (lazo)
 

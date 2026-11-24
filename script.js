@@ -53,6 +53,13 @@ const ICONS = {
   ruler: '<path d="M3 16.5 16.5 3 21 7.5 7.5 21z"/><path d="m7.5 12 2 2M10.5 9l2 2M13.5 6l2 2"/>',
   protractor: '<path d="M3 18a9 9 0 0 1 18 0z"/><path d="m12 18-4-6.5"/>',
   compass: '<circle cx="12" cy="5" r="2"/><path d="m11 7-5 14M13 7l5 14M8.5 15h7"/>',
+  chev: '<path d="m6 9 6 6 6-6"/>',
+  tools: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M17.5 14v7M14 17.5h7"/>',
+  close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  float: '<rect x="3" y="7" width="13" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3"/><path d="m6.5 15.5 2-2 2 2 3-3.5"/>',
+  pin: '<path d="M12 17v5"/><path d="M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2V17h14v-1.8a2 2 0 0 0-1.1-1.8l-1.8-.9a2 2 0 0 1-1.1-1.8V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
+  grip: '<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>',
+  send: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
   curtain: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 13h18"/><path d="M10 13v2h4v-2"/>',
   spot: '<circle cx="12" cy="12" r="3"/><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>',
   lasso: '<path d="M7 22a5 5 0 0 1-2-4"/><path d="M3.3 14A6.8 6.8 0 0 1 2 10c0-4.4 4.5-8 10-8s10 3.6 10 8-4.5 8-10 8a12 12 0 0 1-5-1"/><path d="M5 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/>',
@@ -95,10 +102,6 @@ const DEFAULT_PRESETS = [
   { k: 'pen', c: '#1d1d1f', w: 3 }, { k: 'pen', c: '#1971c2', w: 3 }, { k: 'pen', c: '#e03131', w: 3 },
   { k: 'fountain', c: '#1d1d1f', w: 5 }, { k: 'marker', c: '#2f9e44', w: 6 },
   { k: 'hl', c: '#fcc419', w: 22 }, { k: 'hl', c: '#69db7c', w: 22 }
-];
-const TOOLS = [
-  ['eraser', 'Borrador (E)'], ['shapes', 'Figuras (L, A, R, O, Y) — Mayús para recto/cuadrado'], ['plane', 'Plano cartesiano (G)'],
-  ['func', 'Graficar (F) — tipo GeoGebra'], ['text', 'Texto y símbolos (T)'], ['math', 'Fórmula (Q) — fracciones, raíces, integrales…'], ['laser', 'Puntero láser (K)'], ['hand', 'Mover lienzo (H o barra espaciadora)']
 ];
 
 /* ---------- Estado ---------- */
@@ -1004,7 +1007,7 @@ function idleSave() {
   if (window.requestIdleCallback) requestIdleCallback(() => (act ? idleSave() : autosave()), { timeout: 800 }); else autosave();
 }
 function serialize() {
-  return JSON.stringify({ app: 'mi-pizarra', version: 1, cur, pages: doc.pages.map((p) => ({ bg: p.bg, board: p.board, view: p.view, items: p.items })) });
+  return JSON.stringify({ app: 'mi-pizarra', version: 1, cur, pages: doc.pages.map((p) => ({ bg: p.bg, board: p.board, view: p.view, items: p.items })), ...(FP.items.length ? { float: FP.items } : {}) });
 }
 let quotaWarned = false;
 function autosave() {
@@ -1018,6 +1021,7 @@ function loadText(text, path, quiet) {
     doc = { pages: d.pages.map((p) => ({ bg: BGS.some((b) => b[0] === p.bg) ? p.bg : 'grid', board: BOARDS[p.board] ? p.board : 'white', items: Array.isArray(p.items) ? p.items : [], undo: [], redo: [], view: p.view && isFinite(p.view.s) ? p.view : null })) };
     for (const pg of doc.pages) { try { migrateErasers(pg); } catch (err) { console.error(err); } }
     cur = clamp(d.cur | 0, 0, doc.pages.length - 1); filePath = path || null; S.sel = []; dirty = false;
+    FP.items = Array.isArray(d.float) ? d.float.filter((i) => i && i.t === 'stroke' && Array.isArray(i.pts)) : []; FP.undo = []; FP.redo = []; fpDraw();
     syncColorToBoard(); afterPageChange(); if (!quiet) toast('Pizarra abierta');
     return true;
   } catch (_) { if (!quiet) toast('No se pudo abrir: archivo no válido'); return false; }
@@ -2124,30 +2128,224 @@ function setSpot(on) { CL.spot = on; $('#spot').hidden = !on; if (on) moveSpot(h
 function moveSpot(x, y) {
   const s = $('#spot'); s.style.setProperty('--sx', x + 'px'); s.style.setProperty('--sy', y + 'px'); s.style.setProperty('--sr', CL.spotR + 'px');
 }
-function buildInsPop() {
-  const pop = $('#insPop'); const on = (b) => (b ? ' on' : '');
-  pop.innerHTML = `<h4>Instrumentos</h4>
-    <button class="item${on(INS.ruler)}" data-a="ruler">${ico('ruler')}<span>Regla</span>${INS.ruler ? '<kbd>Quitar</kbd>' : ''}</button>
-    <button class="item${on(INS.prot)}" data-a="prot">${ico('protractor')}<span>Transportador</span>${INS.prot ? '<kbd>Quitar</kbd>' : ''}</button>
-    <button class="item${on(S.tool === 'compass')}" data-a="compass">${ico('compass')}<span>Compás</span><kbd>C</kbd></button>
-    <p class="note">Arrastra la regla o el transportador para moverlos y gira con el botón azul. Dibuja pegado al borde de la regla y la línea sale recta.</p>
-    <hr><h4>Presentar</h4>
-    <button class="item${on(CL.curtain)}" data-a="curtain">${ico('curtain')}<span>Cortina</span>${CL.curtain ? '<kbd>Quitar</kbd>' : ''}</button>
-    <button class="item${on(CL.spot)}" data-a="spot">${ico('spot')}<span>Foco</span>${CL.spot ? '<kbd>Quitar</kbd>' : ''}</button>
-    ${CL.spot ? `<div class="row"><span>Tamaño del foco</span><div class="seg" id="spotSize"><button data-r="100" class="${CL.spotR === 100 ? 'on' : ''}">S</button><button data-r="150" class="${CL.spotR === 150 ? 'on' : ''}">M</button><button data-r="230" class="${CL.spotR === 230 ? 'on' : ''}">L</button></div></div>` : ''}`;
-  pop.querySelectorAll('[data-a]').forEach((b) => (b.onclick = () => {
-    const a = b.dataset.a;
-    if (a === 'ruler' || a === 'prot') insToggle(a);
-    else if (a === 'compass') { setTool(S.tool === 'compass' ? 'hand' : 'compass'); closePops(); }
-    else if (a === 'curtain') setCurtain(!CL.curtain);
-    else if (a === 'spot') setSpot(!CL.spot);
-    buildInsPop(); updateInsBtn();
-  }));
-  pop.querySelectorAll('#spotSize button').forEach((b) => (b.onclick = () => { CL.spotR = +b.dataset.r; moveSpot(hover ? hover[0] : W / 2, hover ? hover[1] : H / 2); buildInsPop(); }));
-  updateInsBtn();
+// Los instrumentos ahora viven en los grupos de la barra (Matemáticas y Presentar).
+function buildInsPop() { if ($('#tools .ib')) refreshBar(); }
+// Tarjeta de ayuda al pasar el mouse (solo con mouse; en pantallas táctiles no aparece).
+let tipEl = null, tipT = 0;
+function hideTip() { clearTimeout(tipT); if (tipEl) tipEl.classList.remove('show'); }
+function hoverTip(btn, info, side) {
+  if (!btn) return;
+  btn.addEventListener('pointerenter', (e) => {
+    if (e.pointerType === 'touch' || !matchMedia('(hover: hover)').matches) return;
+    clearTimeout(tipT);
+    tipT = setTimeout(() => {
+      if (!btn.isConnected) return;
+      const { title, key, text } = info();
+      if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'tipcard'; tipEl.setAttribute('role', 'tooltip'); document.body.appendChild(tipEl); }
+      tipEl.replaceChildren();
+      const h = document.createElement('div'); h.className = 'tc-head';
+      const t = document.createElement('b'); t.textContent = title; h.appendChild(t);
+      if (key) { const k = document.createElement('kbd'); k.textContent = key; h.appendChild(k); }
+      const p = document.createElement('p'); p.textContent = text;
+      tipEl.append(h, p);
+      const r = btn.getBoundingClientRect(), w = 250, th = tipEl.offsetHeight || 100;
+      let x, y;
+      if (side) { // al lado del menú, para no tapar las opciones
+        const pr = (btn.closest('.pop') || btn).getBoundingClientRect();
+        x = pr.right + 10 + w < innerWidth ? pr.right + 10 : pr.left - w - 10; y = clamp(r.top, 8, innerHeight - th - 8);
+      } else {
+        x = clamp(r.left + r.width / 2 - w / 2, 8, innerWidth - w - 8);
+        y = r.bottom + 10 + th < innerHeight ? r.bottom + 10 : Math.max(8, r.top - 10 - th);
+      }
+      tipEl.style.left = x + 'px'; tipEl.style.top = y + 'px';
+      tipEl.classList.add('show');
+    }, 450);
+  });
+  btn.addEventListener('pointerleave', hideTip);
+  btn.addEventListener('pointerdown', hideTip);
 }
-function updateInsBtn() { const b = $('#btnIns'); if (b) b.classList.toggle('on', !!(INS.ruler || INS.prot || CL.curtain || CL.spot || S.tool === 'compass')); }
+function updateInsBtn() { buildInsPop(); }
 
+
+/* ---------- Pizarra flotante: hoja auxiliar para cálculos, encima de todo ---------- */
+// Vive en la pantalla (no en la página): sigue visible al moverte, hacer zoom o cambiar de página.
+// Con el pin queda fija; sin el pin se arrastra por la barra y se cambia de tamaño por la esquina.
+const FP = { open: false, pinned: false, x: null, y: null, w: 440, h: 320, items: [], undo: [], redo: [], v: { x: 0, y: 0, s: 1 } };
+let fpEl = null, fpC = null, fpX = null, fpAct = null, fpLive = null, fpRaf = 0;
+function fpLoadPrefs() {
+  try { const q = JSON.parse(localStorage.getItem('mi-pizarra-float') || 'null'); if (q) { for (const k of ['open', 'pinned', 'x', 'y', 'w', 'h']) if (q[k] !== undefined) FP[k] = q[k]; } } catch (_) {}
+}
+function fpSavePrefs() { try { localStorage.setItem('mi-pizarra-float', JSON.stringify({ open: FP.open, pinned: FP.pinned, x: FP.x, y: FP.y, w: FP.w, h: FP.h })); } catch (_) {} }
+function fpBuild() {
+  if (fpEl) return;
+  fpEl = document.createElement('div'); fpEl.id = 'floatPad'; fpEl.className = 'fpad'; fpEl.hidden = true;
+  fpEl.innerHTML = `<div class="fp-head"><span class="fp-grip">${ico('grip')}</span><span class="fp-title">Pizarra flotante</span>
+    <button class="ib sm" data-f="undo" title="Deshacer en la pizarra flotante">${ico('undo')}</button>
+    <button class="ib sm" data-f="clear" title="Limpiar la pizarra flotante">${ico('trash')}</button>
+    <button class="ib sm" data-f="send" title="Pasar a la pizarra (queda seleccionado para moverlo)">${ico('send')}</button>
+    <button class="ib sm" data-f="pin" title="Fijar en su lugar">${ico('pin')}</button>
+    <button class="ib sm" data-f="close" title="Cerrar (B)">${ico('close')}</button></div>
+    <canvas class="fp-canvas"></canvas><div class="fp-resize" title="Cambiar tamaño"></div>`;
+  document.body.appendChild(fpEl);
+  fpC = fpEl.querySelector('canvas'); fpX = fpC.getContext('2d');
+  fpEl.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => {
+    const f = b.dataset.f;
+    if (f === 'undo') fpUndo(); else if (f === 'clear') fpClear(); else if (f === 'send') fpSend();
+    else if (f === 'pin') { FP.pinned = !FP.pinned; fpSavePrefs(); fpLayout(); toast(FP.pinned ? 'Pizarra flotante fijada' : 'Ahora puedes moverla'); }
+    else if (f === 'close') toggleFloat(false);
+  }));
+  // Mover por la barra y cambiar tamaño por la esquina (solo sin pin).
+  const head = fpEl.querySelector('.fp-head'), grip = fpEl.querySelector('.fp-resize');
+  let drag = null;
+  const startDrag = (e, kind) => {
+    if (FP.pinned || e.target.closest('button')) return;
+    drag = { kind, sx: e.clientX, sy: e.clientY, x: FP.x, y: FP.y, w: FP.w, h: FP.h, id: e.pointerId };
+    e.currentTarget.setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation();
+    fpEl.classList.add('dragging');
+  };
+  const moveDrag = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+    if (drag.kind === 'move') { FP.x = drag.x + dx; FP.y = drag.y + dy; } else { FP.w = drag.w + dx; FP.h = drag.h + dy; }
+    fpLayout();
+  };
+  const endDrag = (e) => { if (!drag || e.pointerId !== drag.id) return; drag = null; fpEl.classList.remove('dragging'); fpSavePrefs(); };
+  head.addEventListener('pointerdown', (e) => startDrag(e, 'move')); grip.addEventListener('pointerdown', (e) => startDrag(e, 'size'));
+  for (const el of [head, grip]) { el.addEventListener('pointermove', moveDrag); el.addEventListener('pointerup', endDrag); el.addEventListener('pointercancel', endDrag); }
+  // Dibujo dentro de la hoja.
+  fpC.addEventListener('pointerdown', fpDown); fpC.addEventListener('pointermove', fpMove);
+  fpC.addEventListener('pointerup', fpUp); fpC.addEventListener('pointercancel', fpUp);
+  fpC.addEventListener('contextmenu', (e) => e.preventDefault());
+  fpC.addEventListener('pointerleave', () => { if (fpHover) { fpHover = null; fpDraw(); } });
+  fpC.addEventListener('wheel', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const r = fpC.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, v = FP.v;
+    if (e.ctrlKey || e.metaKey) { const f = clamp(Math.exp(-e.deltaY * 0.0025), 0.5, 2), ns = clamp(v.s * f, 0.2, 6), k = ns / v.s; v.x = mx - (mx - v.x) * k; v.y = my - (my - v.y) * k; v.s = ns; }
+    else { v.x -= e.shiftKey ? e.deltaY : e.deltaX; v.y -= e.shiftKey ? 0 : e.deltaY; }
+    fpDraw();
+  }, { passive: false });
+  fpEl.addEventListener('pointerdown', (e) => e.stopPropagation());
+}
+function fpLayout() {
+  if (!fpEl) return;
+  const mob = matchMedia('(max-width: 760px), (max-height: 500px) and (pointer: coarse)').matches;
+  const maxW = innerWidth - 16, maxH = innerHeight - 16;
+  FP.w = clamp(FP.w, 240, Math.max(240, maxW)); FP.h = clamp(FP.h, 170, Math.max(170, maxH));
+  if (FP.x === null || FP.y === null) { FP.x = Math.max(8, innerWidth - FP.w - 16); FP.y = mob ? 64 : 72; }
+  FP.x = clamp(FP.x, 8 - FP.w + 120, innerWidth - 120); FP.y = clamp(FP.y, 8, innerHeight - 48);
+  Object.assign(fpEl.style, { left: FP.x + 'px', top: FP.y + 'px', width: FP.w + 'px', height: FP.h + 'px' });
+  fpEl.classList.toggle('pinned', FP.pinned);
+  const pin = fpEl.querySelector('[data-f=pin]'); pin.classList.toggle('on', FP.pinned); pin.title = FP.pinned ? 'Soltar para moverla' : 'Fijar en su lugar';
+  const cw = Math.max(1, fpC.clientWidth), ch = Math.max(1, fpC.clientHeight), d = devicePixelRatio || 1;
+  if (fpC.width !== Math.round(cw * d) || fpC.height !== Math.round(ch * d)) { fpC.width = Math.round(cw * d); fpC.height = Math.round(ch * d); }
+  fpDraw();
+}
+function toggleFloat(on = !FP.open) {
+  fpBuild(); FP.open = on; fpEl.hidden = !on; fpSavePrefs();
+  if (on) fpLayout();
+  buildInsPop();
+}
+function fpDraw() {
+  if (fpRaf) return;
+  fpRaf = requestAnimationFrame(() => {
+    fpRaf = 0; if (!fpEl || fpEl.hidden) return;
+    const d = devicePixelRatio || 1, w = fpC.width / d, h = fpC.height / d, v = FP.v, board = BOARDS[P().board] || BOARDS.white;
+    const prev = paintBoard; paintBoard = board;
+    fpX.setTransform(d, 0, 0, d, 0, 0); fpX.globalAlpha = 1; fpX.globalCompositeOperation = 'source-over';
+    fpX.fillStyle = board.bg; fpX.fillRect(0, 0, w, h);
+    // Cuadrícula de puntos suave, para orientarse al escribir.
+    const g = 24 * v.s; if (g > 6) {
+      fpX.fillStyle = isDarkBoard(board) ? 'rgba(255,255,255,.16)' : 'rgba(0,0,0,.16)';
+      const ox = ((v.x % g) + g) % g, oy = ((v.y % g) + g) % g;
+      for (let x = ox; x < w; x += g) for (let y = oy; y < h; y += g) fpX.fillRect(x - 0.75, y - 0.75, 1.5, 1.5);
+    }
+    fpX.setTransform(d * v.s, 0, 0, d * v.s, d * v.x, d * v.y);
+    for (const it of FP.items) drawSafe(fpX, it);
+    if (fpLive) drawSafe(fpX, fpLive);
+    const ring = fpAct && fpAct.type === 'erase' ? fpAct.cur : !fpAct ? fpHover : null;
+    if (ring) {
+      fpX.setTransform(d, 0, 0, d, 0, 0); fpX.strokeStyle = isDarkBoard(board) ? 'rgba(255,255,255,.6)' : 'rgba(0,0,0,.45)'; fpX.lineWidth = 1;
+      fpX.beginPath(); fpX.arc(ring[0], ring[1], WIDTHS.eraser.v / 2, 0, Math.PI * 2); fpX.stroke();
+    }
+    paintBoard = prev;
+  });
+}
+function fpPt(e) { const r = fpC.getBoundingClientRect(), v = FP.v; return [(e.clientX - r.left - v.x) / v.s, (e.clientY - r.top - v.y) / v.s, e.clientX - r.left, e.clientY - r.top]; }
+function fpSnap() { FP.undo.push(FP.items.slice()); if (FP.undo.length > 60) FP.undo.shift(); FP.redo = []; }
+function fpChanged() { fpDraw(); if (typeof changed === 'function') { dirty = true; clearTimeout(saveTimer); saveTimer = setTimeout(idleSave, 700); } }
+function fpDown(e) {
+  e.stopPropagation(); e.preventDefault();
+  if (fpAct) return;
+  closePops();
+  const [x, y, sx, sy] = fpPt(e);
+  fpC.setPointerCapture(e.pointerId);
+  // Mano, botón central o derecho: mover el contenido de la hoja.
+  if (S.tool === 'hand' || e.button === 1 || e.button === 2 || spaceDown) { fpAct = { type: 'pan', id: e.pointerId, sx: e.clientX, sy: e.clientY, v0: { ...FP.v } }; return; }
+  // Goma (o la goma del lápiz digital): corta los trazos de la hoja.
+  if (S.tool === 'eraser' || e.button === 5 || (e.buttons & 32)) {
+    fpAct = { type: 'erase', id: e.pointerId, last: [x, y], cur: [sx, sy], did: false };
+    fpEraseTo(x, y); return;
+  }
+  // Cualquier otra herramienta escribe con el lápiz activo.
+  const pre = curPreset(), hl = pre.k === 'hl', s = FP.v.s;
+  fpLive = { t: 'stroke', c: pre.c, w: r2(pre.w / s), pts: [[r2(x), r2(y), pr(e)]] };
+  if (hl) fpLive.hl = 1; else fpLive.k = pre.k;
+  if (e.pointerType === 'pen') fpLive.pr = 1;
+  if ((pre.o ?? 1) < 1) fpLive.o = pre.o;
+  fpAct = { type: 'draw', id: e.pointerId, sm: [x, y] };
+  fpDraw();
+}
+function fpEraseTo(x, y) {
+  const R = WIDTHS.eraser.v / 2 / FP.v.s, before = FP.items;
+  const items = FP.items.slice();
+  // eraseArea trabaja sobre la lista que le pasemos; no toca la página ni su historial.
+  const savedSel = S.sel; S.sel = [];
+  const did = eraseArea(fpAct.last, [x, y], R, items, false);
+  S.sel = savedSel;
+  if (did) { if (!fpAct.did) { FP.undo.push(before); FP.redo = []; fpAct.did = true; } FP.items = items; }
+  fpAct.last = [x, y];
+}
+let fpHover = null;
+function fpMove(e) {
+  if (!fpAct) { const was = fpHover; fpHover = S.tool === 'eraser' && e.pointerType !== 'touch' ? fpPt(e).slice(2) : null; if (fpHover || was) fpDraw(); return; }
+  if (e.pointerId !== fpAct.id) return;
+  e.stopPropagation();
+  if (fpAct.type === 'pan') { FP.v.x = fpAct.v0.x + e.clientX - fpAct.sx; FP.v.y = fpAct.v0.y + e.clientY - fpAct.sy; fpDraw(); return; }
+  let evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null; if (!evs || !evs.length) evs = [e];
+  if (fpAct.type === 'erase') { for (const ev of evs) { const [x, y, sx, sy] = fpPt(ev); fpAct.cur = [sx, sy]; fpEraseTo(x, y); } fpDraw(); return; }
+  const f = SMOOTH[S.smooth] || 0;
+  for (const ev of evs) {
+    let [x, y] = fpPt(ev);
+    if (f) { fpAct.sm[0] += (x - fpAct.sm[0]) * (1 - f); fpAct.sm[1] += (y - fpAct.sm[1]) * (1 - f); [x, y] = fpAct.sm; }
+    const l = fpLive.pts[fpLive.pts.length - 1];
+    if (Math.hypot(x - l[0], y - l[1]) < 0.8 / FP.v.s) continue;
+    fpLive.pts.push([r2(x), r2(y), pr(ev)]);
+  }
+  fpDraw();
+}
+function fpUp(e) {
+  if (!fpAct || e.pointerId !== fpAct.id) return;
+  e.stopPropagation();
+  const a = fpAct; fpAct = null;
+  if (a.type === 'draw' && fpLive) { fpSnap(); FP.items = [...FP.items, fpLive]; fpLive = null; fpChanged(); return; }
+  if (a.type === 'erase' && a.did) fpChanged(); else fpDraw();
+}
+function fpUndo() { if (!FP.undo.length) { toast('Nada que deshacer en la pizarra flotante'); return; } FP.redo.push(FP.items); FP.items = FP.undo.pop(); fpChanged(); }
+function fpClear() { if (!FP.items.length) return; fpSnap(); FP.items = []; FP.v = { x: 0, y: 0, s: 1 }; fpChanged(); toast('Pizarra flotante limpia · Deshacer la recupera'); }
+// Copia lo escrito a la página actual, con el mismo tamaño en pantalla y centrado donde estás mirando.
+function fpSend() {
+  if (!FP.items.length) { toast('La pizarra flotante está vacía'); return; }
+  const b = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const it of FP.items) { const q = bbox(it); b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[2]); b[3] = Math.max(b[3], q[3]); }
+  // Lo pone en el lado de la pantalla que la pizarra flotante deja libre (si no, quedaría escondido debajo).
+  const left = FP.x, right = innerWidth - (FP.x + FP.w);
+  const tx = left > right ? Math.max(left / 2, 80) : Math.min(FP.x + FP.w + right / 2, innerWidth - 80);
+  const v = view(), k = FP.v.s / v.s, cx = (b[0] + b[2]) / 2, cy = (b[1] + b[3]) / 2, [wx, wy] = toWorld(tx, H / 2);
+  const out = FP.items.map((it) => ({ ...it, w: r2(it.w * k), pts: it.pts.map((p) => [r2(wx + (p[0] - cx) * k), r2(wy + (p[1] - cy) * k), p[2]]) }));
+  snap(); P().items.push(...out); changed();
+  setTool('select'); S.sel = out; updateSelBar(); req();
+  toast('Copiado a la pizarra: arrástralo a donde quieras');
+}
 
 /* ---------- Abrir PDF como páginas (PDF.js local) ---------- */
 function loadPdfJs() {
@@ -2289,7 +2487,7 @@ window.addEventListener('keydown', (e) => {
 }, true);
 
 /* ---------- Páginas ---------- */
-function afterPageChange() { if (gp.it && !P().items.includes(gp.it)) closeGraphPanel(); syncColorToBoard(); S.sel = []; live = null; act = null; cacheValid = false; updatePageUI(); updateHistoryUI(); updateZoomUI(); updateBgPop(); setTitle(); req(); }
+function afterPageChange() { if (gp.it && !P().items.includes(gp.it)) closeGraphPanel(); syncColorToBoard(); S.sel = []; live = null; act = null; cacheValid = false; updatePageUI(); updateHistoryUI(); updateZoomUI(); updateBgPop(); setTitle(); req(); if (FP.open) fpDraw(); }
 function goPage(i) { commitEditor(); const n = clamp(i, 0, doc.pages.length - 1); if (n === cur) return; cur = n; syncColorToBoard(); afterPageChange(); autosave(); }
 function addPage() { commitEditor(); const np = mkPage(P()); np.view = null; doc.pages.splice(cur + 1, 0, np); cur++; afterPageChange(); changed(); toast(`Página ${cur + 1} creada`); }
 function dupPage() { commitEditor(); const p = P(); const np = mkPage(p); np.items = JSON.parse(JSON.stringify(p.items)); doc.pages.splice(cur + 1, 0, np); cur++; afterPageChange(); changed(); toast('Página duplicada'); }
@@ -2433,57 +2631,222 @@ const colorName = (c) => COLOR_NAMES[String(c).toLowerCase()] || '';
 function savePresets() { try { localStorage.setItem('mi-pizarra-presets', JSON.stringify({ list: S.presets, i: S.pi })); } catch (_) {} }
 const curPreset = () => S.presets[S.pi] || S.presets[0];
 function inkColor(c) { return adapt(c, BOARDS[P().board] || BOARDS.white); }
+/* ---------- Barra de herramientas en grupos (tú eliges qué fijar en la barra) ---------- */
+// Cada herramienta: nombre, tecla, ícono y cómo funciona (sale en la tarjeta al pasar el mouse).
+const TL = {
+  select: { name: 'Seleccionar y mover', key: 'V', text: 'Haz clic en un elemento o arrastra un rectángulo para elegir varios. Muévelos, cambia su tamaño por las esquinas o usa la barra que aparece encima.' },
+  lasso: { name: 'Selección libre', key: 'S', text: 'Dibuja una línea alrededor de lo que quieres seleccionar, como con un lazo.' },
+  eraser: { name: 'Borrador', key: 'E', text: 'Borra lo que tocas, como una goma. En Color y grosor puedes cambiarlo a borrar trazos completos.' },
+  line: { name: 'Línea', key: 'L', text: 'Arrastra para trazarla. Con Mayús queda perfectamente recta.' },
+  arrow: { name: 'Flecha', key: 'A', text: 'Arrastra desde el inicio hasta la punta. Con Mayús queda recta.' },
+  rect: { name: 'Rectángulo', key: 'R', text: 'Arrastra de esquina a esquina. Con Mayús sale un cuadrado.' },
+  ellipse: { name: 'Elipse o círculo', key: 'O', text: 'Arrastra para dibujarla. Con Mayús sale un círculo perfecto.' },
+  triangle: { name: 'Triángulo', key: 'Y', text: 'Arrastra para dibujarlo dentro del rectángulo que marcas.' },
+  plane: { name: 'Plano cartesiano', key: 'G', text: 'Arrastra para crear un plano con ejes y cuadrícula. Doble clic encima para agregarle funciones.' },
+  func: { name: 'Graficar', key: 'F', text: 'Escribe funciones como y = x² o sin(x), con deslizadores, derivadas, puntos y desigualdades, como en GeoGebra.' },
+  math: { name: 'Fórmula', key: 'Q', text: 'Haz clic donde quieras y escríbela en LaTeX: fracciones, raíces, integrales, matrices… Doble clic sobre una fórmula para editarla.' },
+  compass: { name: 'Compás', key: 'C', text: 'Presiona en el centro, abre hasta el radio y gira para trazar el arco. Si sueltas sin girar, dibuja el círculo completo.' },
+  ruler: { name: 'Regla', toggle: true, on: () => !!INS.ruler, run: () => insToggle('ruler'), text: 'Aparece sobre la pizarra: arrástrala para moverla y gírala con el botón azul o la rueda. Dibuja pegado a su borde y la línea sale recta.' },
+  prot: { name: 'Transportador', icon: 'protractor', toggle: true, on: () => !!INS.prot, run: () => insToggle('prot'), text: 'Mide ángulos de 0° a 180° en ambos sentidos. Se arrastra y gira igual que la regla.' },
+  text: { name: 'Texto', key: 'T', text: 'Haz clic y escribe. Aparece una barra con símbolos matemáticos (π, √, ≤, ∞…).' },
+  laser: { name: 'Puntero láser', key: 'K', text: 'Señala mientras explicas: el trazo brilla un momento y desaparece solo.' },
+  float: { name: 'Pizarra flotante', key: 'B', toggle: true, on: () => FP.open, run: () => toggleFloat(), text: 'Hoja auxiliar encima de todo para hacer cálculos aparte. Arrástrala, cámbiale el tamaño o fíjala con el pin.' },
+  curtain: { name: 'Cortina', toggle: true, on: () => CL.curtain, run: () => setCurtain(!CL.curtain), text: 'Tapa la página; arrástrala hacia abajo para ir revelando el contenido poco a poco.' },
+  spot: { name: 'Foco', toggle: true, on: () => CL.spot, run: () => setSpot(!CL.spot), text: 'Oscurece todo menos un círculo que sigue al puntero, para centrar la atención.' },
+  hand: { name: 'Mover', key: 'H', text: 'Arrastra para moverte por la pizarra. También con la barra espaciadora o el botón central del mouse.' }
+};
+const TGROUPS = [
+  { id: 'sel', name: 'Selección', tools: ['select', 'lasso'] },
+  { id: 'pens', name: 'Lápices y resaltadores', pens: true },
+  { id: 'erase', tools: ['eraser'] },
+  { id: 'shapes', name: 'Figuras', tools: ['line', 'arrow', 'rect', 'ellipse', 'triangle'] },
+  { id: 'mathg', name: 'Matemáticas', tools: ['plane', 'func', 'math', 'compass', 'ruler', 'prot'] },
+  { id: 'write', tools: ['text'] },
+  { id: 'present', name: 'Presentar', tools: ['laser', 'float', 'curtain', 'spot'] },
+  { id: 'move', tools: ['hand'] }
+];
+const BAR_DEFAULT = []; // por defecto nada fijado: cada grupo muestra una sola herramienta y la barra queda liviana
+// Lápices fijos por defecto: los tres primeros bolígrafos y el primer resaltador.
+function defaultPenPins(list) {
+  let pens = 0, hl = 0;
+  for (const p of list) { const keep = p.k === 'hl' ? hl++ < 1 : pens++ < 3; if (keep) delete p.bar; else p.bar = false; }
+}
+function resetBar() {
+  barPins = new Set(BAR_DEFAULT); saveBarPins(); defaultPenPins(S.presets); savePresets(); buildTools();
+  toast('Barra restablecida a como viene por defecto');
+}
+let barPins = new Set(BAR_DEFAULT), grpOpen = null, prevTool = 'hand';
+const groupLast = {};
+function loadBarPins() { try { const q = JSON.parse(localStorage.getItem('mi-pizarra-bar') || 'null'); if (Array.isArray(q)) barPins = new Set(q.filter((id) => TL[id])); } catch (_) {} }
+function saveBarPins() { try { localStorage.setItem('mi-pizarra-bar', JSON.stringify([...barPins])); } catch (_) {} }
+const toolIcon = (id) => TL[id].icon || id;
+const toolOn = (id) => (TL[id].toggle ? TL[id].on() : S.tool === id);
+const MODE_TOOLS = ['laser', 'compass']; // modos que se apagan al tocarlos otra vez
+function runTool(id) {
+  const t = TL[id];
+  if (t.toggle) t.run();
+  else if (S.tool === id && MODE_TOOLS.includes(id)) { setTool(prevTool && prevTool !== id ? prevTool : 'hand'); toast(`${t.name} desactivado`); }
+  else setTool(id);
+  refreshBar();
+}
+const tipFor = (id) => () => ({ title: TL[id].name, key: TL[id].key, text: TL[id].text });
+const penTitle = (p) => `${KINDS[p.k].name} ${colorName(p.c)}`.trim();
+const penTip = (p, i) => () => ({ title: penTitle(p), key: i < 9 ? String(i + 1) : '', text: `Grosor ${p.w}${(p.o ?? 1) < 1 ? ` · opacidad ${Math.round(p.o * 100)}%` : ''}. Tócalo otra vez para cambiar color, grosor y opacidad.` });
 function buildTools() {
-  const box = $('#tools'); box.innerHTML = '';
-  const mk = (id, title) => {
-    const b = document.createElement('button'); b.className = 'ib'; b.dataset.tool = id; b.title = title;
-    b.innerHTML = id === 'shapes' ? ico(S.lastShape) + '<i class="caret"></i>' : ico(id);
-    b.onclick = () => {
-      if (id === 'shapes') { if (SHAPES.some((s) => s[0] === S.tool)) { togglePop('#shapePop', b); return; } setTool(S.lastShape); return; }
-      setTool(id);
-    };
-    box.appendChild(b);
+  hideTip();
+  const box = $('#tools'); box.replaceChildren();
+  for (const g of TGROUPS) {
+    if (g.pens) {
+      const pbox = document.createElement('div'); pbox.id = 'presets'; pbox.className = 'group'; box.appendChild(pbox);
+      box.appendChild(groupButton(g));
+      continue;
+    }
+    const single = g.tools.length === 1;
+    for (const id of g.tools) if (single || barPins.has(id)) box.appendChild(toolButton(id));
+    if (!single) box.appendChild(groupButton(g));
+  }
+  buildPresets(); refreshBar();
+}
+function toolButton(id) {
+  const b = document.createElement('button'); b.className = 'ib'; b.dataset.tool = id; b.setAttribute('aria-label', TL[id].name);
+  b.innerHTML = ico(toolIcon(id));
+  b.onclick = () => { hideTip(); if (grpOpen) { closePops(); grpOpen = null; } runTool(id); };
+  hoverTip(b, tipFor(id));
+  return b;
+}
+// Botón del grupo: muestra la herramienta del grupo que no está fijada (la activa o la última que usaste) y abre su menú.
+function groupRep(g) {
+  const free = g.tools.filter((id) => !barPins.has(id));
+  if (!free.length) return null;
+  const act = free.find((id) => toolOn(id) && !TL[id].toggle) || free.find((id) => toolOn(id));
+  return act || (free.includes(groupLast[g.id]) ? groupLast[g.id] : free[0]);
+}
+function groupButton(g) {
+  const b = document.createElement('button'); b.className = 'ib tgroup'; b.dataset.group = g.id; if (g.id === 'shapes') b.dataset.tool = 'shapes';
+  b.setAttribute('aria-label', g.name);
+  // Primer toque: usa la herramienta que muestra el botón; si ya está activa (o el grupo está todo fijado), abre el menú del grupo.
+  // La esquina con la flechita siempre abre el menú del grupo.
+  let caretHit = false;
+  b.addEventListener('pointerdown', (e) => { const q = b.getBoundingClientRect(); caretHit = e.clientX > q.right - 13 && e.clientY > q.bottom - 15; });
+  b.onclick = () => {
+    hideTip();
+    if (grpOpen !== g) { closePops(); grpOpen = null; } // al cambiar de grupo se cierra el menú del anterior
+    if (caretHit) { openGroup(g, b); return; } // la flechita siempre abre (o cierra) el menú del grupo
+    const r = g.pens ? null : groupRep(g);
+    if (r && !TL[r].toggle && S.tool !== r) { groupLast[g.id] = r; runTool(r); return; }
+    if (r && MODE_TOOLS.includes(r) && S.tool === r) { runTool(r); return; }
+    openGroup(g, b);
   };
-  mk('select', 'Seleccionar y mover (V)');
-  mk('lasso', 'Selección libre (S): dibuja alrededor de lo que quieres seleccionar');
-  const pbox = document.createElement('div'); pbox.id = 'presets'; pbox.className = 'group'; box.appendChild(pbox);
-  const add = document.createElement('button'); add.className = 'ib add'; add.title = 'Agregar lápiz'; add.innerHTML = ico('plus');
-  add.onclick = () => { const p = { ...curPreset() }; if (S.presets.length >= 12) { toast('Máximo 12 lápices'); return; } S.presets.push(p); S.pi = S.presets.length - 1; savePresets(); setTool('pen'); buildPresets(); toast('Lápiz agregado: tócalo de nuevo para configurarlo'); };
-  box.appendChild(add);
-  for (const [id, title] of TOOLS) mk(id, title);
-  buildPresets();
-  const sp = $('#shapePop');
-  sp.innerHTML = SHAPES.map(([id, name, k]) => `<button class="ib" data-shape="${id}" title="${name} (${k})">${ico(id)}</button>`).join('');
-  sp.querySelectorAll('button').forEach((b) => (b.onclick = () => { setTool(b.dataset.shape); closePops(); }));
+  hoverTip(b, () => {
+    const r = g.pens ? null : groupRep(g);
+    if (r && MODE_TOOLS.includes(r) && S.tool === r) return { title: TL[r].name, key: TL[r].key, text: `Tócalo otra vez (o Esc) para desactivarlo. La flechita de la esquina abre el grupo ${g.name}.` };
+    if (r) return { title: TL[r].name, key: TL[r].key, text: `${TL[r].text} Toca otra vez para ver el grupo ${g.name}.` };
+    return { title: g.name, key: '', text: 'Toca para ver todo el grupo y elegir cuáles fijar en la barra con el pin.' };
+  });
+  return b;
+}
+function paintGroupButton(b, g) {
+  if (!g) return;
+  let compact, on = false;
+  b.classList.remove('preset', 'hl');
+  if (g.pens) {
+    const free = S.presets.map((p, i) => [p, i]).filter(([p]) => p.bar === false);
+    compact = !free.length;
+    if (!compact) {
+      const [p] = free.find(([, i]) => S.tool === 'pen' && S.pi === i) || free[0];
+      b.innerHTML = ico(KINDS[p.k].icon) + `<i class="tip" style="height:4px;background:${inkColor(p.c)}"></i><i class="caret"></i>`;
+      b.classList.add('preset'); if (p.k === 'hl') b.classList.add('hl');
+      on = S.tool === 'pen' && curPreset().bar === false;
+    }
+  } else {
+    const rep = groupRep(g); compact = !rep;
+    if (!compact) { b.innerHTML = ico(toolIcon(rep)) + '<i class="caret"></i>'; on = toolOn(rep); }
+  }
+  b.classList.toggle('more', compact);
+  if (compact) b.innerHTML = ico('chev');
+  b.classList.toggle('on', on);
+}
+function refreshBar() {
+  document.querySelectorAll('#tools > .ib[data-tool]:not(.tgroup)').forEach((b) => b.classList.toggle('on', toolOn(b.dataset.tool)));
+  document.querySelectorAll('#tools > .tgroup').forEach((b) => paintGroupButton(b, TGROUPS.find((g) => g.id === b.dataset.group)));
+  if (grpOpen && $('#grpPop').classList.contains('show')) buildGroupPop(grpOpen);
+}
+function openGroup(g, anchor) {
+  const pop = $('#grpPop'), same = grpOpen === g && pop.classList.contains('show');
+  closePops(); if (same) { grpOpen = null; return; }
+  buildGroupPop(g); togglePop('#grpPop', anchor); grpOpen = g;
+}
+function buildGroupPop(g) {
+  const pop = $('#grpPop'); hideTip(); pop.replaceChildren();
+  const h = document.createElement('h4'); h.textContent = g.name; pop.appendChild(h);
+  const row = (icoHtml, name, key, on, pinned, pick, pin, tip) => {
+    const r = document.createElement('div'); r.className = 'gi';
+    const it = document.createElement('button'); it.className = 'item' + (on ? ' on' : '');
+    it.innerHTML = icoHtml; const sp = document.createElement('span'); sp.textContent = name; it.appendChild(sp);
+    if (key) { const k = document.createElement('kbd'); k.textContent = key; it.appendChild(k); }
+    it.onclick = () => { hideTip(); pick(); }; hoverTip(it, tip, true);
+    const pb = document.createElement('button'); pb.className = 'pinb' + (pinned ? ' on' : ''); pb.innerHTML = ico('pin');
+    const lab = pinned ? 'Quitar de la barra' : 'Fijar en la barra'; pb.setAttribute('aria-label', lab); pb.title = lab;
+    pb.onclick = (e) => { e.stopPropagation(); pin(); };
+    r.append(it, pb); pop.appendChild(r);
+  };
+  if (g.pens) {
+    S.presets.forEach((p, i) => row(
+      `<span class="pi-ico">${ico(KINDS[p.k].icon)}<i style="background:${inkColor(p.c)};${(p.o ?? 1) < 1 ? `opacity:${p.o}` : ''}"></i></span>`,
+      `${penTitle(p)} · ${p.w}`, i < 9 ? String(i + 1) : '', S.tool === 'pen' && S.pi === i, p.bar !== false,
+      () => { closePops(); selectPen(i); },
+      () => { if (p.bar === false) delete p.bar; else p.bar = false; savePresets(); buildTools(); },
+      penTip(p, i)));
+    const add = document.createElement('button'); add.className = 'item'; add.innerHTML = ico('plus');
+    const t = document.createElement('span'); t.textContent = 'Agregar lápiz'; add.appendChild(t);
+    add.onclick = () => {
+      if (S.presets.length >= 12) { toast('Máximo 12 lápices'); return; }
+      const p = { ...curPreset() }; delete p.bar; S.presets.push(p); S.pi = S.presets.length - 1;
+      savePresets(); setTool('pen'); buildTools(); toast('Lápiz agregado: tócalo en la barra para configurarlo');
+    };
+    pop.appendChild(add);
+  } else {
+    for (const id of g.tools) row(ico(toolIcon(id)), TL[id].name, toolOn(id) && (TL[id].toggle || MODE_TOOLS.includes(id)) ? 'Quitar' : TL[id].key, toolOn(id), barPins.has(id),
+      () => { if (!TL[id].toggle) { closePops(); groupLast[g.id] = id; } runTool(id); },
+      () => { if (barPins.has(id)) barPins.delete(id); else barPins.add(id); saveBarPins(); buildTools(); },
+      tipFor(id));
+    if (g.id === 'present' && CL.spot) {
+      const r = document.createElement('div'); r.className = 'row';
+      r.innerHTML = `<span>Tamaño del foco</span><div class="seg" id="spotSize"><button data-r="100" class="${CL.spotR === 100 ? 'on' : ''}">S</button><button data-r="150" class="${CL.spotR === 150 ? 'on' : ''}">M</button><button data-r="230" class="${CL.spotR === 230 ? 'on' : ''}">L</button></div>`;
+      r.querySelectorAll('button').forEach((b) => (b.onclick = () => { CL.spotR = +b.dataset.r; moveSpot(hover ? hover[0] : W / 2, hover ? hover[1] : H / 2); buildGroupPop(g); }));
+      pop.appendChild(r);
+    }
+  }
 }
 function buildPresets() {
-  const box = $('#presets'); box.innerHTML = '';
+  const box = $('#presets'); if (!box) return; box.replaceChildren();
   S.presets.forEach((p, i) => {
+    if (p.bar === false) return;
     const b = document.createElement('button'); b.className = 'ib preset' + (p.k === 'hl' ? ' hl' : '') + (S.tool === 'pen' && S.pi === i ? ' on' : '');
-    b.title = `${KINDS[p.k].name} · grosor ${p.w}${(p.o ?? 1) < 1 ? ` · opacidad ${Math.round(p.o * 100)}%` : ''}${i < 9 ? ` (${i + 1})` : ''} — tócalo otra vez para configurarlo`;
+    b.setAttribute('aria-label', penTitle(p));
     const th = p.k === 'hl' ? 6 : clamp(Math.round(p.w * 0.6), 2, 5);
     b.innerHTML = ico(KINDS[p.k].icon) + `<i class="tip" style="height:${th}px;background:${inkColor(p.c)};${(p.o ?? 1) < 1 ? `opacity:${p.o}` : ''}"></i>`;
     b.onclick = () => {
+      hideTip(); if (grpOpen) closePops();
       if (S.tool === 'pen' && S.pi === i) { buildStyle(); togglePop('#stylePop', b); return; }
       S.pi = i; if (p.k === 'hl') S.lastHl = i; else S.lastPen = i; savePresets(); setTool('pen');
     };
+    hoverTip(b, penTip(p, i));
     box.appendChild(b);
   });
+  const gb = $('#tools > .tgroup[data-group=pens]'); if (gb) paintGroupButton(gb, TGROUPS[1]);
 }
 function setTool(t) {
   if (t !== 'text') commitEditor();
   if (gp.it && t !== 'func' && t !== 'plane') closeGraphPanel();
   if (mx.st && t !== 'math') commitMath();
   if (SHAPES.some((s) => s[0] === t)) S.lastShape = t;
+  if (S.tool !== t && !MODE_TOOLS.includes(S.tool)) prevTool = S.tool;
   S.tool = t; laserOn = false;
   if (!isSelTool(t)) S.sel = [];
-  const shapesBtn = $('#tools [data-tool=shapes]');
-  shapesBtn.innerHTML = ico(S.lastShape) + '<i class="caret"></i>';
-  document.querySelectorAll('#tools > .ib').forEach((b) => b.classList.toggle('on', b.dataset.tool === t || (b.dataset.tool === 'shapes' && SHAPES.some((s) => s[0] === t))));
-  $('#shapePop').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.shape === t));
+  for (const g of TGROUPS) if (g.tools && g.tools.includes(t) && !barPins.has(t)) groupLast[g.id] = t;
   $('#symbols').classList.toggle('show', t === 'text');
-  buildPresets(); buildStyleBtn(); if ($('#stylePop').classList.contains('show')) buildStyle();
-  if ($('#btnIns')) updateInsBtn();
+  buildPresets(); refreshBar(); buildStyleBtn(); if ($('#stylePop').classList.contains('show')) buildStyle();
   setCursor(); req();
 }
 function widthCfg() {
@@ -2646,17 +3009,22 @@ $('#optShape').addEventListener('change', (e) => { S.shapeAssist = e.target.chec
 document.querySelectorAll('#optSmooth button').forEach((x) => (x.onclick = () => { S.smooth = +x.dataset.s; buildAssist(); }));
 function updateHistoryUI() { $('#btnUndo').disabled = !P().undo.length; $('#btnRedo').disabled = !P().redo.length; }
 
-function closePops() { document.querySelectorAll('.pop.show').forEach((p) => p.classList.remove('show')); }
+function closePops() { document.querySelectorAll('.pop.show').forEach((p) => p.classList.remove('show')); grpOpen = null; }
 function togglePop(sel, anchor) {
   const p = $(sel), open = p.classList.contains('show'); closePops(); if (open) return;
-  p.classList.add('show');
-  const r = anchor.getBoundingClientRect(), ph = p.offsetHeight, vh = window.innerHeight;
-  const below = vh - r.bottom - 8, above = r.top - 8;
-  let top = below >= ph + 8 || below >= above ? r.bottom + 8 : r.top - ph - 8;
+  p.style.maxHeight = ''; p.classList.add('show');
+  const r = anchor.getBoundingClientRect(), vh = window.innerHeight;
+  const below = vh - r.bottom - 16, above = r.top - 16;
+  // Si no cabe (laptops pequeñas), el menú se limita al espacio libre y se desplaza con su propia barra.
+  const cssMax = parseFloat(getComputedStyle(p).maxHeight) || Infinity; // respeta el límite del diseño móvil
+  const down = p.offsetHeight <= below || below >= above, room = Math.min(cssMax, Math.max(120, down ? below : above));
+  p.style.maxHeight = room + 'px';
+  const ph = p.offsetHeight;
+  const top = down ? r.bottom + 8 : r.top - ph - 8;
   p.style.top = clamp(top, 8, Math.max(8, vh - ph - 8)) + 'px';
   p.style.left = clamp(r.left, 8, window.innerWidth - p.offsetWidth - 8) + 'px';
 }
-document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.pop') && !e.target.closest('#btnMenu,#btnBg,#btnAssist,#btnStyle,#btnIns,.preset,[data-tool=shapes]')) closePops(); });
+document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.pop') && !e.target.closest('#btnMenu,#btnBg,#btnAssist,#btnStyle,.preset,.tgroup')) closePops(); });
 
 function buildMenu() {
   const items = [
@@ -2668,7 +3036,7 @@ function buildMenu() {
     ['image', 'Exportar página como imagen (PNG)', '', exportPNG], ['pdf', 'Exportar esta página a PDF', '', () => exportPDF(true)], ['pdf', 'Exportar todas las páginas a PDF', 'Ctrl+P', () => exportPDF(false)], null,
     ['full', 'Pantalla completa', 'F11', toggleFull], ['present', 'Modo presentación (ocultar barras)', 'Tab', togglePresent], ['help', 'Atajos de teclado', 'F1', showHelp], null,
     ...(isStandalone() ? [] : [['install', 'Instalar Mi Pizarra como app', '', installApp]]),
-    ['sparkle', 'Novedades', '', openHistory],
+    ['tools', 'Restablecer barra de herramientas', '', resetBar], ['sparkle', 'Novedades', '', openHistory],
     ['info', 'Acerca de Mi Pizarra', '', openAbout]
   ];
   const m = $('#menuPop'); m.innerHTML = '<h4>Mi Pizarra</h4>';
@@ -2685,7 +3053,7 @@ function updateBgPop() {
     `<hr><h4>Color de la pizarra</h4><div class="boardsw">` + Object.entries(BOARDS).map(([id, b]) => `<button title="${b.name}" data-board="${id}" class="${p.board === id ? 'on' : ''}" style="background:${b.bg}"></button>`).join('') + `</div>`;
   m.querySelectorAll('[data-bg]').forEach((b) => (b.onclick = () => { P().bg = b.dataset.bg; updateBgPop(); changed(); }));
   m.querySelectorAll('[data-board]').forEach((b) => (b.onclick = () => {
-    const old = BOARDS[P().board]; P().board = b.dataset.board;
+    const old = BOARDS[P().board]; P().board = b.dataset.board; if (FP.open) fpDraw();
     void old; syncColorToBoard(); cacheValid = false;
     buildColors(); updateBgPop(); changed();
   }));
@@ -2840,14 +3208,15 @@ window.addEventListener('keydown', (e) => {
     if (i >= 0) { S.pi = i; setTool('pen'); }
     return;
   }
+  if (k === 'b' && !e.altKey) { toggleFloat(); return; }
   const keys = { s: 'lasso', q: 'math', c: 'compass', e: 'eraser', v: 'select', l: 'line', a: 'arrow', r: 'rect', o: 'ellipse', y: 'triangle', g: 'plane', f: 'func', t: 'text', k: 'laser', h: 'hand' };
-  if (keys[k] && !e.altKey) setTool(keys[k]);
+  if (keys[k] && !e.altKey) { if (MODE_TOOLS.includes(keys[k]) && S.tool === keys[k]) runTool(keys[k]); else setTool(keys[k]); }
 });
 window.addEventListener('keyup', (e) => { if (e.key === ' ') { e.preventDefault(); spaceDown = false; setCursor(); } });
 window.addEventListener('blur', () => { if (spaceDown) { spaceDown = false; setCursor(); } });
 // Los botones de las barras no se quedan con el foco: así Espacio o Enter no repiten la última acción (p. ej. Limpiar página).
 document.addEventListener('click', (e) => { const b = e.target.closest('.bar button, .pop button'); if (b && b !== document.activeElement?.closest('input')) b.blur(); });
-window.addEventListener('resize', resize);
+window.addEventListener('resize', () => { resize(); if (FP.open) fpLayout(); });
 window.addEventListener('beforeunload', autosave);
 document.addEventListener('visibilitychange', () => { if (document.hidden && dirty) autosave(); });
 window.addEventListener('dragover', (e) => e.preventDefault());
@@ -2865,8 +3234,6 @@ function wire() {
   $('#mxTpl').querySelectorAll('button').forEach((b) => { b.onpointerdown = (e) => e.preventDefault(); b.onclick = () => insertTpl(MATH_TPL[+b.dataset.i][1]); });
   $('#mxInput').addEventListener('input', previewMath);
   $('#mxOk').onclick = commitMath; $('#mxCancel').onclick = closeMathEditor;
-  $('#btnIns').innerHTML = ico('ruler') + '<i class="caret"></i>';
-  $('#btnIns').onclick = (e) => { buildInsPop(); togglePop('#insPop', e.currentTarget); };
   $('#ctClose').onclick = () => setCurtain(false);
   { const ct = $('#curtain'), hd = ct.querySelector('.ct-handle'); let drag = null;
     hd.addEventListener('pointerdown', (e) => { if (e.target.closest('button')) return; drag = { y0: e.clientY, t0: CL.cy }; hd.setPointerCapture(e.pointerId); e.preventDefault(); });
@@ -2892,6 +3259,18 @@ function wire() {
    Para publicar una versión nueva, agrega un bloque ARRIBA de la lista (no borres los anteriores).
    Quien se haya saltado versiones verá todas las novedades que se perdió. */
 const CHANGELOGS = [
+  { v: '1.4.4', items: [
+    ['🗒️', 'Pizarra flotante: una hoja auxiliar para hacer cálculos aparte, encima de la pizarra (tecla B o Instrumentos).'],
+    ['📌', 'Arrástrala por la barra y cambia su tamaño por la esquina; con el pin queda fija y no se mueve.'],
+    ['👀', 'Sigue visible aunque te muevas, hagas zoom o cambies de página, y se guarda con tu archivo.'],
+    ['⬇️', '“Pasar a la pizarra” copia lo que escribiste a la página, listo para moverlo a donde quieras.'],
+    ['🧰', 'Barra en grupos: Selección, Lápices, Figuras, Matemáticas y Presentar. Con el pin decides qué herramientas quedan fijas en la barra.'],
+    ['🧹', 'Barra más liviana por defecto; Menú → Restablecer barra de herramientas la deja como viene.'],
+    ['💬', 'Al pasar el mouse por cualquier herramienta aparece cómo funciona y su atajo.'],
+    ['🔴', 'El puntero láser y el compás se apagan tocándolos otra vez (o con su tecla) y vuelves a la herramienta que tenías.'],
+    ['📜', 'En pantallas bajas los menús ya no se cortan: se desplazan con su propia barra.'],
+    ['🧭', 'Compás, regla y transportador ahora están en el grupo Matemáticas; cortina, foco y pizarra flotante en Presentar.']
+  ] },
   { v: '1.4.3', items: [
     ['🧽', 'La goma ahora borra de verdad: corta los trazos y figuras en vez de pintar encima del color del fondo.'],
     ['↔️', 'Lo que borraste sigue borrado aunque muevas o cambies el tamaño de la selección.'],
@@ -2994,7 +3373,7 @@ function initWhatsNew() {
 
 async function init() {
   doc = { pages: [mkPage()] };
-  resize(); wire(); buildTools(); buildMenu(); buildSymbols();
+  resize(); wire(); loadBarPins(); buildTools(); buildMenu(); buildSymbols();
   try {
     const s = localStorage.getItem('mi-pizarra-autosave');
     if (s) { loadText(s, localStorage.getItem('mi-pizarra-name') || null, true); dirty = false; }
@@ -3004,10 +3383,12 @@ async function init() {
     const pz = JSON.parse(localStorage.getItem('mi-pizarra-presets') || 'null');
     if (pz && Array.isArray(pz.list) && pz.list.length) { S.presets = pz.list.filter((q) => KINDS[q.k] && q.c && q.w > 0).slice(0, 12); S.pi = clamp(pz.i | 0, 0, S.presets.length - 1); }
     if (!S.presets.length) S.presets = DEFAULT_PRESETS.map((q) => ({ ...q }));
+    if (!localStorage.getItem('mi-pizarra-bar') && !S.presets.some((q) => 'bar' in q)) defaultPenPins(S.presets);
   } catch (_) {}
   buildAssist();
   syncColorToBoard(); setTool('pen'); afterPageChange();
   initWhatsNew();
+  fpLoadPrefs(); if (FP.open) toggleFloat(true);
   try { if (isPhone() && !localStorage.getItem('mi-pizarra-hint-dock')) { localStorage.setItem('mi-pizarra-hint-dock', '1'); setTimeout(() => toast('Desliza la barra de abajo para ver todas las herramientas'), 900); } } catch (_) {}
   { const tb = $('#topbar'); const on = () => tb.classList.toggle('more', tb.scrollWidth - tb.clientWidth - tb.scrollLeft > 8); tb.addEventListener('scroll', on, { passive: true }); window.addEventListener('resize', on); setTimeout(on, 50); }
 }

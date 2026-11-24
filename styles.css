@@ -172,6 +172,7 @@ body.dark .seg button.on{ background:#636366; }
   opacity:0; transform:translateY(-4px) scale(0.98); transform-origin:top left; pointer-events:none; visibility:hidden;
   transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out), visibility 0s linear 180ms;
 }
+.pop{ overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
 .pop.show{ opacity:1; transform:none; pointer-events:auto; visibility:visible; transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out), visibility 0s; }
 .pop.shapes{ display:flex; gap:2px; min-width:0; padding:5px; }
 .pop .item{
@@ -421,7 +422,7 @@ body.dark #toast{ background:rgba(58,58,60,.97); }
 @media (hover:hover) and (pointer:fine){ .ct-handle button:hover{ background:var(--fill); } }
 #spot{ position:absolute; inset:0; z-index:6; pointer-events:none;
   background: radial-gradient(circle at var(--sx, 50%) var(--sy, 50%), transparent 0, transparent var(--sr, 150px), rgba(0,0,0,.78) calc(var(--sr, 150px) + 1.5px)); }
-#insPop{ width:280px; }
+#grpPop{ width:270px; }
 
 /* ---------- Barra de selección ---------- */
 #selbar{ z-index:12; }
@@ -502,7 +503,7 @@ body.present .bar:not(#topbar), body.present #symbols, body.present .sheet{ disp
   #symbols button{ flex:none; }
 
   .pop{ max-width:calc(100vw - 16px); max-height:calc(100vh - 120px); overflow:auto; }
-  #stylePop, #insPop, #assistPop{ width:min(300px, calc(100vw - 16px)); }
+  #stylePop, #grpPop, #assistPop{ width:min(300px, calc(100vw - 16px)); }
 
   .sheet{
     top:auto; left:8px; right:8px; bottom:calc(64px + env(safe-area-inset-bottom,0px)); width:auto;
@@ -530,3 +531,60 @@ body.present .bar:not(#topbar), body.present #symbols, body.present .sheet{ disp
   #topbar .ib, #tools .ib{ width:38px; height:38px; }
   .sheet{ max-height:calc(100vh - 80px); bottom:calc(58px + env(safe-area-inset-bottom,0px)); }
 }
+
+/* ---------- Pizarra flotante ---------- */
+.fpad{
+  position:fixed; z-index:20; display:flex; flex-direction:column; overflow:hidden;
+  background:var(--material-strong);
+  -webkit-backdrop-filter:saturate(180%) blur(20px); backdrop-filter:saturate(180%) blur(20px);
+  border-radius:var(--radius-md); box-shadow:var(--shadow-pop);
+  animation: fp-in 200ms var(--ease-out);
+}
+@keyframes fp-in{ from{ opacity:0; transform:translateY(6px) scale(.98); } to{ opacity:1; transform:none; } }
+.fp-head{ flex:none; display:flex; align-items:center; gap:1px; height:40px; padding:0 4px 0 6px; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
+.fpad.dragging .fp-head{ cursor:grabbing; }
+.fpad.pinned .fp-head{ cursor:default; }
+.fp-grip{ display:grid; place-items:center; width:18px; color:var(--ink-faint); }
+.fp-grip svg{ width:16px; height:16px; fill:currentColor; stroke:none; }
+.fpad.pinned .fp-grip{ opacity:.35; }
+.fp-title{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:600 13px/1 var(--font-ui); color:var(--ink-soft); padding-left:4px; }
+.fpad .ib.sm{ width:32px; height:32px; }
+.fpad .ib.sm svg{ width:17px; height:17px; }
+.fp-canvas{ position:static; flex:1; min-height:0; width:100%; display:block; touch-action:none; cursor:crosshair; border-top:.5px solid var(--separator); }
+.fp-resize{ position:absolute; right:0; bottom:0; width:22px; height:22px; cursor:nwse-resize; touch-action:none;
+  background: linear-gradient(135deg, transparent 52%, var(--ink-faint) 52%, var(--ink-faint) 58%, transparent 58%, transparent 70%, var(--ink-faint) 70%, var(--ink-faint) 76%, transparent 76%);
+  opacity:.7; }
+.fpad.pinned .fp-resize{ display:none; }
+@media (max-width: 760px), (max-height: 500px) and (pointer: coarse){
+  .fp-head{ height:44px; }
+  .fpad .ib.sm{ width:38px; height:38px; }
+  .fp-resize{ width:30px; height:30px; }
+}
+
+/* ---------- Tarjeta de ayuda al pasar el mouse ---------- */
+.tipcard{
+  position:fixed; z-index:40; width:250px; padding:10px 12px; pointer-events:none;
+  background:var(--material-strong);
+  -webkit-backdrop-filter:saturate(180%) blur(20px); backdrop-filter:saturate(180%) blur(20px);
+  border-radius:var(--radius-sm); box-shadow:var(--shadow-pop);
+  opacity:0; transform:translateY(-3px); transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+}
+.tipcard.show{ opacity:1; transform:none; }
+.tc-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px; font:600 13px/1.2 var(--font-ui); color:var(--ink); }
+.tc-head kbd{ font:500 11px/1 var(--font-ui); padding:3px 6px; border-radius:5px; background:var(--fill); color:var(--ink-soft); }
+.tipcard p{ margin:0; font:400 12.5px/1.4 var(--font-ui); color:var(--ink-soft); }
+
+/* ---------- Grupos de herramientas ---------- */
+.ib.more{ width:18px; color:var(--ink-faint); }
+.ib.more svg{ width:14px; height:14px; }
+#grpPop .gi{ display:flex; align-items:center; gap:2px; }
+#grpPop .gi .item{ flex:1; min-width:0; }
+#grpPop .gi .item span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pinb{ flex:none; width:32px; height:32px; display:grid; place-items:center; border-radius:8px; color:var(--ink-faint); opacity:.55;
+  transition: background-color 120ms var(--ease-out), color 120ms var(--ease-out), opacity 120ms var(--ease-out), transform 120ms var(--ease-out); }
+.pinb svg{ width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.pinb.on{ color:var(--accent-text); background:var(--accent-fill); opacity:1; }
+.pinb:active{ transform:scale(.97); }
+@media (hover:hover) and (pointer:fine){ .pinb:hover{ background:var(--fill); opacity:1; } .pinb.on:hover{ background:var(--accent-fill); } }
+.pi-ico{ position:relative; display:grid; place-items:center; width:20px; height:20px; }
+.pi-ico i{ position:absolute; left:2px; right:2px; bottom:-2px; height:4px; border-radius:2px; }

@@ -19,10 +19,10 @@
 <meta name="apple-mobile-web-app-title" content="Mi Pizarra">
 <link rel="manifest" href="manifest.webmanifest">
 <title>Mi Pizarra</title>
-<link rel="icon" href="logo.svg?v=1.4.3" type="image/svg+xml">
-<link rel="alternate icon" href="favicon.ico?v=1.4.3">
-<link rel="apple-touch-icon" href="icon-180.png?v=1.4.3">
-<link rel="stylesheet" href="styles.css?v=1.4.3">
+<link rel="icon" href="logo.svg?v=1.4.4" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico?v=1.4.4">
+<link rel="apple-touch-icon" href="icon-180.png?v=1.4.4">
+<link rel="stylesheet" href="styles.css?v=1.4.4">
 </head>
 <body>
 <canvas id="bg"></canvas>
@@ -30,7 +30,7 @@
 <canvas id="ov"></canvas>
 <textarea id="editor" spellcheck="false"></textarea>
 
-<div id="brand"><img src="logo.svg?v=1.4.3" alt="" width="28" height="28"><span>Mi Pizarra</span></div>
+<div id="brand"><img src="logo.svg?v=1.4.4" alt="" width="28" height="28"><span>Mi Pizarra</span></div>
 
 <div id="topbar" class="bar">
   <button class="ib" id="btnMenu" title="Menú"></button>
@@ -38,7 +38,6 @@
   <div class="sep"></div>
   <div id="tools" class="group"></div>
   <div class="sep"></div>
-  <button class="ib" id="btnIns" title="Regla, transportador, compás, cortina y foco"></button>
   <button class="ib" id="btnStyle" title="Color y grosor"></button>
   <button class="ib" id="btnAssist" title="Corrección de trazo y letra"></button>
   <div class="sep"></div>
@@ -79,7 +78,6 @@
 
 <div id="menuPop" class="pop"></div>
 <div id="bgPop" class="pop"></div>
-<div id="shapePop" class="pop shapes"></div>
 <div id="stylePop" class="pop">
   <div id="kindBox">
     <h4>Tipo</h4>
@@ -102,7 +100,7 @@
     <button class="item danger" id="presetDel"></button>
   </div>
 </div>
-<div id="insPop" class="pop"></div>
+<div id="grpPop" class="pop"></div>
 <div id="assistPop" class="pop">
   <h4>Corrección de trazo</h4>
   <div class="row"><span>Mantener para corregir figura</span><label class="switch"><input type="checkbox" id="optShape" checked><span class="slider"></span></label></div>
@@ -179,6 +177,7 @@
         <div class="krow"><span class="kk"><kbd>L</kbd><kbd>A</kbd><kbd>R</kbd><kbd>O</kbd><kbd>Y</kbd></span><span>Línea, flecha, rectángulo, elipse, triángulo</span></div>
         <div class="krow"><span class="kk"><kbd>G</kbd><kbd>F</kbd></span><span>Plano cartesiano / gráfica</span></div>
         <div class="krow"><span class="kk"><kbd>K</kbd></span><span>Puntero láser</span></div>
+        <div class="krow"><span class="kk"><kbd>B</kbd></span><span>Pizarra flotante (abrir / cerrar)</span></div>
         <div class="krow"><span class="kk"><kbd>H</kbd></span><span>Mano de mover</span></div>
         <div class="krow"><span class="kk"><kbd>Espacio</kbd></span><span>Mano mientras lo mantienes</span></div>
         <div class="krow"><span class="kk"><kbd>Esc</kbd></span><span>Volver a la mano</span></div>
@@ -232,9 +231,9 @@
 
 <div id="modalBg">
   <div class="modal about">
-    <img src="logo.svg?v=1.4.3" alt="" width="72" height="72">
+    <img src="logo.svg?v=1.4.4" alt="" width="72" height="72">
     <h3>Mi Pizarra</h3>
-    <p class="ver">Versión 1.4.3<br>Tu pizarra digital para clases, tutorías e ideas</p>
+    <p class="ver">Versión 1.4.4<br>Tu pizarra digital para clases, tutorías e ideas</p>
     <p>Hecho por <strong>José Luciano Mejía Arias</strong></p>
     <div class="socials">
       <a class="ig" href="https://instagram.com/lucianomejia17" target="_blank" rel="noopener"><span class="badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.8"/><circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none"/></svg></span>Instagram</a>
@@ -262,6 +261,6 @@
 
 <div id="toast"></div>
 <input type="file" id="fileInput" accept=".pizarra,.json">
-<script src="script.js?v=1.4.3"></script>
+<script src="script.js?v=1.4.4"></script>
 </body>
 </html>
